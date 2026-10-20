@@ -8,7 +8,7 @@ from hijri_converter import Gregorian
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Personal Academic Planner",
+    page_title="SP AI",
     page_icon="🎓",
     layout="wide"
 )
