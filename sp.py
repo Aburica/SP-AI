@@ -24,13 +24,37 @@ language = st.sidebar.radio(
 
 is_arabic = (language == "العربية")
 
-# Dynamic Sidebar Inputs (API Key input removed from UI)
+# Time Unit Selector & Study Duration Input
+st.sidebar.markdown("---")
 if is_arabic:
-    daily_hours = st.sidebar.number_input("ساعات الدراسة اليومية المتاحة:", min_value=1, max_value=16, value=4)
-else:
-    daily_hours = st.sidebar.number_input("Available Daily Study Hours:", min_value=1, max_value=16, value=4)
+    st.sidebar.subheader("⏱️ وقت المذاكرة المتاح")
+    time_unit = st.sidebar.radio("وحدة الوقت:", ("بالدقائق", "بالساعات"))
+    
+    if time_unit == "بالدقائق":
+        study_duration = st.sidebar.number_input("مدة المذاكرة المتاحة (بالدقائق):", min_value=15, max_value=960, value=120, step=15)
+        duration_text = f"{study_duration} دقيقة"
+    else:
+        study_duration = st.sidebar.number_input("ساعات الدراسة المتاحة:", min_value=1, max_value=16, value=2)
+        duration_text = f"{study_duration} ساعة"
 
-# Retrieve API Key securely from Streamlit Secrets
+    # Pomodoro Tip Note
+    st.sidebar.info("💡 **ملاحظة نظام البومودورو (Pomodoro):**\nللحصول على أفضل تركيز، يُفضل تقسيم جلسات المذاكرة إلى فترات تتراوح بين **25 - 50 دقيقة** تعقبها استراحة قصيرة (5 - 10 دقائق).")
+
+else:
+    st.sidebar.subheader("⏱️ Available Study Time")
+    time_unit = st.sidebar.radio("Time Unit:", ("Minutes", "Hours"))
+    
+    if time_unit == "Minutes":
+        study_duration = st.sidebar.number_input("Study Duration (Minutes):", min_value=15, max_value=960, value=120, step=15)
+        duration_text = f"{study_duration} minutes"
+    else:
+        study_duration = st.sidebar.number_input("Available Daily Study Hours:", min_value=1, max_value=16, value=2)
+        duration_text = f"{study_duration} hours"
+
+    # Pomodoro Tip Note
+    st.sidebar.info("💡 **Pomodoro Technique Tip:**\nFor optimal focus, study sessions are most effective when split into **25 - 50 minute blocks** followed by a short break (5 - 10 minutes).")
+
+# Securely retrieve API key from Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY", "")
 
 # ---------------------------------------------------------
@@ -38,13 +62,13 @@ api_key = st.secrets.get("GEMINI_API_KEY", "")
 # ---------------------------------------------------------
 if is_arabic:
     st.title("🎓 مخطط المهام والأولويات الأكاديمية")
-    st.write("نظم جدول دراستك اليومي، واجباتك، واختباراتك باستخدام الذكاء الاصطناعي.")
+    st.write("نظم جدول دراستك اليومي، واجباتك، واختباراتك باستخدام الذكاء الاصطناعي وتقنية البومودورو.")
 else:
     st.title("🎓 Personal Academic Task & Priority Planner")
-    st.write("Organize your daily study sessions, assignments, and exams using AI.")
+    st.write("Organize your daily study sessions, assignments, and exams using AI and Pomodoro focus sessions.")
 
 # ---------------------------------------------------------
-# Main Input Form (Dynamic Labels & Placeholders)
+# Main Input Form
 # ---------------------------------------------------------
 col1, col2, col3 = st.columns(3)
 
@@ -97,7 +121,7 @@ with col3:
         )
 
 # ---------------------------------------------------------
-# Button & Logic
+# Button & Generation Logic
 # ---------------------------------------------------------
 button_label = "🚀 إنشاء الجدول الدراسي" if is_arabic else "🚀 Generate My Study Schedule"
 
@@ -111,10 +135,10 @@ if st.button(button_label, type="primary", use_container_width=True):
     else:
         if is_arabic:
             prompt = f"""
-أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
+أنت مخطط أكاديمي وخبير في تنظيم الوقت وتقنيات الدراسة مثل (Pomodoro Technique).
 يرجى إنشاء جدول دراسي منظم ومحدد بالأولويات بناءً على المهام التالية:
 
-- ساعات الدراسة المتاحة يومياً: {daily_hours} ساعات
+- وقت المذاكرة المتاح المخصص لهذه الجلسة: {duration_text}
 
 - الواجبات والمشاريع:
 {assignments if assignments.strip() else 'لا يوجد'}
@@ -125,18 +149,19 @@ if st.button(button_label, type="primary", use_container_width=True):
 - الدروس والمراجعة اليومية:
 {lessons if lessons.strip() else 'لا يوجد'}
 
-التعليمات:
+التعليمات الهامة:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
-2. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
-3. وزّع المهام بمرونة ضمن حدود الـ {daily_hours} ساعات المتاحة.
-4. استخدم نقاطاً واضحة وجداول إن أمكن ليكون الجدول سهلاً للقراءة والتنفيذ.
+2. اعتمد على تقنية البومودورو (Pomodoro): قسم الوقت المتاح إلى جلسات تركيز مدتها بين 25 إلى 50 دقيقة، مع استراحة قصيرة بين الجلسات (5 - 10 دقائق).
+3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
+4. وزّع المهام بمرونة بحيث لا تتعدى إجمالي الوقت المتاح ({duration_text}).
+5. قدم الجدول بتنسيق سهل للقراءة والتنفيذ.
 """
         else:
             prompt = f"""
-You are an expert academic planner and study strategist.
+You are an expert academic planner and study strategist trained in focus techniques like the Pomodoro Technique.
 Please create an optimized, prioritized study schedule based on the following student workload:
 
-- Available Daily Study Time: {daily_hours} hours/day
+- Available Study Time: {duration_text}
 
 - ASSIGNMENTS:
 {assignments if assignments.strip() else 'None provided'}
@@ -149,12 +174,13 @@ Please create an optimized, prioritized study schedule based on the following st
 
 INSTRUCTIONS:
 1. Respond fully in English.
-2. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
-3. Allocate daily time slots realistically within the {daily_hours}-hour daily limit.
-4. Provide actionable step-by-step breakdown using clean formatting.
+2. Apply the Pomodoro method: Structure the available time into focus sessions of 25 to 50 minutes each, interspersed with short breaks (5-10 mins).
+3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
+4. Keep the total scheduled time strictly within the total allocated time of {duration_text}.
+5. Format the schedule in a clear, easy-to-follow structure.
 """
 
-        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء جدولك..." if is_arabic else "Connecting to AI Models and organizing your plan..."
+        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء جدولك الذكي..." if is_arabic else "Connecting to AI Models and organizing your plan..."
         st.info(info_msg)
 
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
@@ -163,7 +189,7 @@ INSTRUCTIONS:
         success = False
         response_text = ""
 
-        spin_msg = "جاري تحضير الجدول... يرجى الانتظار..." if is_arabic else "Processing schedule... Please wait..."
+        spin_msg = "جاري تحضير الجدول وفق أسلوب جلسات التركيز... يرجى الانتظار..." if is_arabic else "Processing schedule... Please wait..."
         with st.spinner(spin_msg):
             for model_name in models_to_try:
                 for attempt in range(1, 4):
@@ -190,5 +216,4 @@ INSTRUCTIONS:
             st.markdown("---")
             st.markdown(response_text)
         else:
-            fail_msg = "❌ السيرفرات مشغولة حالياً (503). يرجى الانتظار 30 ثانية والمحاولة مرة أخرى." if is_arabic else "❌ Servers are currently under heavy load (503). Please wait 30 seconds and click the button again."
-            st.error(fail_msg)
+            fail_msg = "❌ السيرفرات مشغولة حالياً (503). يرجى الانتظار 30 ثانية والمحاولة مرة أخرى." if is_arabic else
