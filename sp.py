@@ -139,10 +139,10 @@ api_key = st.secrets.get("GEMINI_API_KEY", "")
 # Main Page Titles & Description
 # ---------------------------------------------------------
 if is_arabic:
-    st.title("🎓 مخطط المهام والأولويات الأكاديمية")
+    st.title("🎓 اس بي اي آي ")
     st.write("نظم جدول دراستك اليومي، واجباتك، واختباراتك باستخدام الذكاء الاصطناعي.")
 else:
-    st.title("🎓 Personal Academic Task & Priority Planner")
+    st.title("🎓 SP AI")
     st.write("Organize your daily study sessions, assignments, and exams using AI.")
 
 # ---------------------------------------------------------
