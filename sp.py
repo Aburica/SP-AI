@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Sidebar Configuration (Settings, Language & Date Range)
+# Sidebar Configuration (Settings, Language, Calendar & Date Range)
 # ---------------------------------------------------------
 st.sidebar.header("⚙️ Settings / الإعدادات")
 
@@ -24,6 +24,20 @@ language = st.sidebar.radio(
 )
 
 is_arabic = (language == "العربية")
+
+st.sidebar.markdown("---")
+
+# Calendar Type Selector (الميلادي / الهجري)
+if is_arabic:
+    calendar_type = st.sidebar.radio(
+        "اختر نوع التقويم:",
+        ("ميلادي (Gregorian)", "هجري (Hijri)")
+    )
+else:
+    calendar_type = st.sidebar.radio(
+        "Select Calendar Type:",
+        ("Gregorian", "Hijri")
+    )
 
 st.sidebar.markdown("---")
 
@@ -169,7 +183,8 @@ if st.button(button_label, type="primary", use_container_width=True):
 أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
 يرجى إنشاء جدول دراسي زمني مفصل ومحدد بالأولويات بناءً على المعطيات التالية:
 
-- فترة الدراسة: من تاريخ {start_date} إلى تاريخ {end_date}
+- التقويم المطلوب: {calendar_type}
+- فترة الدراسة من تاريخ {start_date} إلى تاريخ {end_date} (ملاحظة: إذا كان التقويم المحدد هو الهجري، يرجى تحويل ونطق تواريخ الأيام بالتقويم الهجري المقابل لها).
 - معدل وقت الدراسة المتاح: {time_description}
 
 - الواجبات والمشاريع:
@@ -183,7 +198,7 @@ if st.button(button_label, type="primary", use_container_width=True):
 
 التعليمات:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
-2. قسّم الجدول يوماً بييوم طوال الفترة المحددة (من {start_date} إلى {end_date}).
+2. قسّم الجدول يوماً بيوم طوال الفترة المحددة بالاعتماد على نوع التقويم المختار ({calendar_type}).
 3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
 4. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
 """
@@ -192,7 +207,8 @@ if st.button(button_label, type="primary", use_container_width=True):
 You are an expert academic planner and study strategist.
 Please create a detailed, day-by-day optimized study schedule based on the following:
 
-- Study Period: From {start_date} to {end_date}
+- Calendar Format: {calendar_type}
+- Study Period: From {start_date} to {end_date} (Note: If Hijri calendar is selected, render daily dates using the corresponding Hijri calendar dates).
 - Available Study Time: {time_description}
 
 - ASSIGNMENTS:
@@ -206,7 +222,7 @@ Please create a detailed, day-by-day optimized study schedule based on the follo
 
 INSTRUCTIONS:
 1. Respond fully in English.
-2. Provide a structured, day-by-day schedule spanning from {start_date} to {end_date}.
+2. Provide a structured, day-by-day schedule spanning from {start_date} to {end_date} using the selected calendar format ({calendar_type}).
 3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
 4. Allocate daily time slots realistically within the limit of {time_description}.
 5. Use clear headings and tables for each day.
@@ -231,7 +247,7 @@ INSTRUCTIONS:
                             contents=prompt
                         )
                         response_text = res.text
-                        success = success = True
+                        success = True
                         break
                     except Exception as e:
                         err_str = str(e)
