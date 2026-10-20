@@ -35,7 +35,7 @@ st.sidebar.markdown("---")
 # Calendar Type Selector (الميلادي / الهجري)
 if is_arabic:
     calendar_type = st.sidebar.radio(
-        "اختر نوع التقويم للعرض والجدول:",
+        "اختر نوع التقويم  :",
         ("ميلادي (Gregorian)", "هجري (Hijri)")
     )
 else:
