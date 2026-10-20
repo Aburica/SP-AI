@@ -1,6 +1,7 @@
 import streamlit as st
 from google import genai
 import time
+import datetime
 
 # ---------------------------------------------------------
 # Page Configuration
@@ -12,7 +13,7 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------
-# Sidebar Configuration (Settings & Language Selection)
+# Sidebar Configuration (Settings, Language & Date Range)
 # ---------------------------------------------------------
 st.sidebar.header("⚙️ Settings / الإعدادات")
 
@@ -26,37 +27,46 @@ is_arabic = (language == "العربية")
 
 st.sidebar.markdown("---")
 
+# Date Range Pickers for Study Schedule
+if is_arabic:
+    st.sidebar.subheader("📅 نطاق جدول الدراسة")
+    start_date = st.sidebar.date_input("تاريخ البداية:", datetime.date.today())
+    end_date = st.sidebar.date_input("تاريخ النهاية:", datetime.date.today() + datetime.timedelta(days=5))
+else:
+    st.sidebar.subheader("📅 Study Date Range")
+    start_date = st.sidebar.date_input("Start Date:", datetime.date.today())
+    end_date = st.sidebar.date_input("End Date:", datetime.date.today() + datetime.timedelta(days=5))
+
+st.sidebar.markdown("---")
+
 # Time Unit Selector Option
 if is_arabic:
     time_mode = st.sidebar.radio(
-        "اختر طريقة إدخال وقت الدراسة:",
+        "اختر طريقة إدخال وقت الدراسة اليومي:",
         ("بالساعات", "بالدقائق", "ساعات ودقائق معاً")
     )
 else:
     time_mode = st.sidebar.radio(
-        "Choose study time format:",
+        "Choose daily study time format:",
         ("Hours", "Minutes", "Hours & Minutes")
     )
 
 # Dynamic time inputs based on selected mode
 time_description = ""
-total_hours_numeric = 4.0
 
 if time_mode in ("بالساعات", "Hours"):
     h = st.sidebar.number_input(
-        "عدد الساعات:" if is_arabic else "Number of Hours:",
+        "عدد الساعات يومياً:" if is_arabic else "Hours per day:",
         min_value=1, max_value=24, value=4
     )
-    total_hours_numeric = float(h)
-    time_description = f"{h} ساعات" if is_arabic else f"{h} hours"
+    time_description = f"{h} ساعات يومياً" if is_arabic else f"{h} hours per day"
 
 elif time_mode in ("بالدقائق", "Minutes"):
     m = st.sidebar.number_input(
-        "عدد الدقائق:" if is_arabic else "Number of Minutes:",
+        "عدد الدقائق يومياً:" if is_arabic else "Minutes per day:",
         min_value=10, max_value=1440, value=240, step=15
     )
-    total_hours_numeric = m / 60.0
-    time_description = f"{m} دقيقة" if is_arabic else f"{m} minutes"
+    time_description = f"{m} دقيقة يومياً" if is_arabic else f"{m} minutes per day"
 
 else:
     col_h, col_m = st.sidebar.columns(2)
@@ -70,11 +80,10 @@ else:
             "الدقائق" if is_arabic else "Minutes",
             min_value=0, max_value=59, value=30, step=5
         )
-    total_hours_numeric = h + (m / 60.0)
     if is_arabic:
-        time_description = f"{h} ساعات و {m} دقيقة"
+        time_description = f"{h} ساعات و {m} دقيقة يومياً"
     else:
-        time_description = f"{h} hours and {m} minutes"
+        time_description = f"{h} hours and {m} minutes per day"
 
 # Retrieve API Key securely from Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -158,9 +167,10 @@ if st.button(button_label, type="primary", use_container_width=True):
         if is_arabic:
             prompt = f"""
 أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
-يرجى إنشاء جدول دراسي منظم ومحدد بالأولويات بناءً على المهام التالية:
+يرجى إنشاء جدول دراسي زمني مفصل ومحدد بالأولويات بناءً على المعطيات التالية:
 
-- وقت الدراسة المتاح يومياً: {time_description}
+- فترة الدراسة: من تاريخ {start_date} إلى تاريخ {end_date}
+- معدل وقت الدراسة المتاح: {time_description}
 
 - الواجبات والمشاريع:
 {assignments if assignments.strip() else 'لا يوجد'}
@@ -168,20 +178,21 @@ if st.button(button_label, type="primary", use_container_width=True):
 - الاختبارات القادمة:
 {exams if exams.strip() else 'لا يوجد'}
 
-- الدروس والمراجعة اليومية:
+- الدروس والمراجعة:
 {lessons if lessons.strip() else 'لا يوجد'}
 
 التعليمات:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
-2. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
-3. وزّع المهام بمرونة ضمن إطار وقت الدراسة المتاح ({time_description}).
-4. استخدم نقاطاً واضحة وجداول إن أمكن ليكون الجدول سهلاً للقراءة والتنفيذ.
+2. قسّم الجدول يوماً بييوم طوال الفترة المحددة (من {start_date} إلى {end_date}).
+3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
+4. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
 """
         else:
             prompt = f"""
 You are an expert academic planner and study strategist.
-Please create an optimized, prioritized study schedule based on the following student workload:
+Please create a detailed, day-by-day optimized study schedule based on the following:
 
+- Study Period: From {start_date} to {end_date}
 - Available Study Time: {time_description}
 
 - ASSIGNMENTS:
@@ -195,12 +206,13 @@ Please create an optimized, prioritized study schedule based on the following st
 
 INSTRUCTIONS:
 1. Respond fully in English.
-2. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
-3. Allocate daily time slots realistically within the available time limit ({time_description}).
-4. Provide actionable step-by-step breakdown using clean formatting.
+2. Provide a structured, day-by-day schedule spanning from {start_date} to {end_date}.
+3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
+4. Allocate daily time slots realistically within the limit of {time_description}.
+5. Use clear headings and tables for each day.
 """
 
-        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء جدولك..." if is_arabic else "Connecting to AI Models and organizing your plan..."
+        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء خطتك الزمنية..." if is_arabic else "Connecting to AI Models and organizing your plan..."
         st.info(info_msg)
 
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
@@ -219,7 +231,7 @@ INSTRUCTIONS:
                             contents=prompt
                         )
                         response_text = res.text
-                        success = True
+                        success = success = True
                         break
                     except Exception as e:
                         err_str = str(e)
@@ -231,7 +243,7 @@ INSTRUCTIONS:
                     break
 
         if success:
-            succ_msg = "✅ تم إنشاء الجدول بنجاح!" if is_arabic else "✅ Schedule Generated Successfully!"
+            succ_msg = "✅ تم إنشاء الجدول الزمني بنجاح!" if is_arabic else "✅ Schedule Generated Successfully!"
             st.success(succ_msg)
             st.markdown("---")
             st.markdown(response_text)
