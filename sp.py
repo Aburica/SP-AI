@@ -13,6 +13,10 @@ st.set_page_config(
     layout="wide"
 )
 
+# Initialize Session State for Chat/Schedule History
+if "history" not in st.session_state:
+    st.session_state.history = []
+
 # ---------------------------------------------------------
 # Sidebar Configuration (Settings, Language, Calendar & Date Range)
 # ---------------------------------------------------------
@@ -120,6 +124,13 @@ else:
         time_description = f"{h} ساعات و {m} دقيقة يومياً"
     else:
         time_description = f"{h} hours and {m} minutes per day"
+
+# Clear History Button in Sidebar
+st.sidebar.markdown("---")
+clear_btn_label = "🗑️ مسح سجل المحادثات" if is_arabic else "🗑️ Clear Chat History"
+if st.sidebar.button(clear_btn_label, use_container_width=True):
+    st.session_state.history = []
+    st.rerun()
 
 # Retrieve API Key securely from Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -281,10 +292,35 @@ INSTRUCTIONS:
                     break
 
         if success:
-            succ_msg = "✅ تم إنشاء الجدول الزمني بنجاح!" if is_arabic else "✅ Schedule Generated Successfully!"
-            st.success(succ_msg)
-            st.markdown("---")
-            st.markdown(response_text)
+            # Save to Session State History
+            st.session_state.history.append({
+                "assignments": assignments,
+                "exams": exams,
+                "lessons": lessons,
+                "response": response_text,
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+            })
         else:
             fail_msg = "❌ السيرفرات مشغولة حالياً (503). يرجى الانتظار 30 ثانية والمحاولة مرة أخرى." if is_arabic else "❌ Servers are currently under heavy load (503). Please wait 30 seconds and click the button again."
             st.error(fail_msg)
+
+# ---------------------------------------------------------
+# Display Chat History / Previous Schedules
+# ---------------------------------------------------------
+if st.session_state.history:
+    st.markdown("---")
+    history_title = "📚 سجل الجداول السابقة" if is_arabic else "📚 Schedule History"
+    st.subheader(history_title)
+
+    for i, item in enumerate(reversed(st.session_state.history)):
+        with st.expander(f"📌 جدول بتاريخ: {item['timestamp']} (إصدار #{len(st.session_state.history) - i})"):
+            st.markdown(f"**{ 'المهام المدخلة:' if is_arabic else 'Inputs:' }**")
+            if item['assignments']:
+                st.write(f"- **{ 'الواجبات:' if is_arabic else 'Assignments:' }** {item['assignments']}")
+            if item['exams']:
+                st.write(f"- **{ 'الاختبارات:' if is_arabic else 'Exams:' }** {item['exams']}")
+            if item['lessons']:
+                st.write(f"- **{ 'الدروس:' if is_arabic else 'Lessons:' }** {item['lessons']}")
+            
+            st.markdown("---")
+            st.markdown(item['response'])
