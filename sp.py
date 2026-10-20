@@ -24,11 +24,57 @@ language = st.sidebar.radio(
 
 is_arabic = (language == "العربية")
 
-# Dynamic Sidebar Inputs (API Key input removed from UI)
+st.sidebar.markdown("---")
+
+# Time Unit Selector Option
 if is_arabic:
-    daily_hours = st.sidebar.number_input("ساعات الدراسة اليومية المتاحة:", min_value=1, max_value=16, value=4)
+    time_mode = st.sidebar.radio(
+        "اختر طريقة إدخال وقت الدراسة:",
+        ("بالساعات", "بالدقائق", "ساعات ودقائق معاً")
+    )
 else:
-    daily_hours = st.sidebar.number_input("Available Daily Study Hours:", min_value=1, max_value=16, value=4)
+    time_mode = st.sidebar.radio(
+        "Choose study time format:",
+        ("Hours", "Minutes", "Hours & Minutes")
+    )
+
+# Dynamic time inputs based on selected mode
+time_description = ""
+total_hours_numeric = 4.0
+
+if time_mode in ("بالساعات", "Hours"):
+    h = st.sidebar.number_input(
+        "عدد الساعات:" if is_arabic else "Number of Hours:",
+        min_value=1, max_value=24, value=4
+    )
+    total_hours_numeric = float(h)
+    time_description = f"{h} ساعات" if is_arabic else f"{h} hours"
+
+elif time_mode in ("بالدقائق", "Minutes"):
+    m = st.sidebar.number_input(
+        "عدد الدقائق:" if is_arabic else "Number of Minutes:",
+        min_value=10, max_value=1440, value=240, step=15
+    )
+    total_hours_numeric = m / 60.0
+    time_description = f"{m} دقيقة" if is_arabic else f"{m} minutes"
+
+else:
+    col_h, col_m = st.sidebar.columns(2)
+    with col_h:
+        h = st.number_input(
+            "الساعات" if is_arabic else "Hours",
+            min_value=0, max_value=23, value=3
+        )
+    with col_m:
+        m = st.number_input(
+            "الدقائق" if is_arabic else "Minutes",
+            min_value=0, max_value=59, value=30, step=5
+        )
+    total_hours_numeric = h + (m / 60.0)
+    if is_arabic:
+        time_description = f"{h} ساعات و {m} دقيقة"
+    else:
+        time_description = f"{h} hours and {m} minutes"
 
 # Retrieve API Key securely from Streamlit Secrets
 api_key = st.secrets.get("GEMINI_API_KEY", "")
@@ -114,7 +160,7 @@ if st.button(button_label, type="primary", use_container_width=True):
 أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
 يرجى إنشاء جدول دراسي منظم ومحدد بالأولويات بناءً على المهام التالية:
 
-- ساعات الدراسة المتاحة يومياً: {daily_hours} ساعات
+- وقت الدراسة المتاح يومياً: {time_description}
 
 - الواجبات والمشاريع:
 {assignments if assignments.strip() else 'لا يوجد'}
@@ -128,7 +174,7 @@ if st.button(button_label, type="primary", use_container_width=True):
 التعليمات:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
 2. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
-3. وزّع المهام بمرونة ضمن حدود الـ {daily_hours} ساعات المتاحة.
+3. وزّع المهام بمرونة ضمن إطار وقت الدراسة المتاح ({time_description}).
 4. استخدم نقاطاً واضحة وجداول إن أمكن ليكون الجدول سهلاً للقراءة والتنفيذ.
 """
         else:
@@ -136,7 +182,7 @@ if st.button(button_label, type="primary", use_container_width=True):
 You are an expert academic planner and study strategist.
 Please create an optimized, prioritized study schedule based on the following student workload:
 
-- Available Daily Study Time: {daily_hours} hours/day
+- Available Study Time: {time_description}
 
 - ASSIGNMENTS:
 {assignments if assignments.strip() else 'None provided'}
@@ -150,7 +196,7 @@ Please create an optimized, prioritized study schedule based on the following st
 INSTRUCTIONS:
 1. Respond fully in English.
 2. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
-3. Allocate daily time slots realistically within the {daily_hours}-hour daily limit.
+3. Allocate daily time slots realistically within the available time limit ({time_description}).
 4. Provide actionable step-by-step breakdown using clean formatting.
 """
 
