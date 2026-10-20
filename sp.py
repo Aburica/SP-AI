@@ -2,6 +2,7 @@ import streamlit as st
 from google import genai
 import time
 import datetime
+from hijri_converter import Gregorian
 
 # ---------------------------------------------------------
 # Page Configuration
@@ -30,7 +31,7 @@ st.sidebar.markdown("---")
 # Calendar Type Selector (الميلادي / الهجري)
 if is_arabic:
     calendar_type = st.sidebar.radio(
-        "اختر نوع التقويم:",
+        "اختر نوع التقويم للعرض والجدول:",
         ("ميلادي (Gregorian)", "هجري (Hijri)")
     )
 else:
@@ -38,6 +39,8 @@ else:
         "Select Calendar Type:",
         ("Gregorian", "Hijri")
     )
+
+is_hijri_selected = "Hijri" in calendar_type or "هجري" in calendar_type
 
 st.sidebar.markdown("---")
 
@@ -50,6 +53,25 @@ else:
     st.sidebar.subheader("📅 Study Date Range")
     start_date = st.sidebar.date_input("Start Date:", datetime.date.today())
     end_date = st.sidebar.date_input("End Date:", datetime.date.today() + datetime.timedelta(days=5))
+
+# Convert to Hijri if Hijri Calendar is selected
+start_hijri_obj = Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
+end_hijri_obj = Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
+
+start_date_str = f"{start_hijri_obj.year}/{start_hijri_obj.month}/{start_hijri_obj.day} هـ" if is_hijri_selected else str(start_date)
+end_date_str = f"{end_hijri_obj.year}/{end_hijri_obj.month}/{end_hijri_obj.day} هـ" if is_hijri_selected else str(end_date)
+
+# Display calculated Hijri dates in sidebar when selected
+if is_hijri_selected:
+    st.sidebar.info(
+        f"🕌 **التاريخ الهجري المحدد:**\n\n"
+        f"• **البداية:** {start_date_str}\n\n"
+        f"• **النهاية:** {end_date_str}"
+        if is_arabic else
+        f"🕌 **Selected Hijri Dates:**\n\n"
+        f"• **Start:** {start_date_str}\n\n"
+        f"• **End:** {end_date_str}"
+    )
 
 st.sidebar.markdown("---")
 
@@ -183,8 +205,8 @@ if st.button(button_label, type="primary", use_container_width=True):
 أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
 يرجى إنشاء جدول دراسي زمني مفصل ومحدد بالأولويات بناءً على المعطيات التالية:
 
-- التقويم المطلوب: {calendar_type}
-- فترة الدراسة من تاريخ {start_date} إلى تاريخ {end_date} (ملاحظة: إذا كان التقويم المحدد هو الهجري، يرجى تحويل ونطق تواريخ الأيام بالتقويم الهجري المقابل لها).
+- التقويم المستخدم: {calendar_type}
+- فترة الدراسة: من تاريخ {start_date_str} إلى تاريخ {end_date_str}
 - معدل وقت الدراسة المتاح: {time_description}
 
 - الواجبات والمشاريع:
@@ -198,7 +220,7 @@ if st.button(button_label, type="primary", use_container_width=True):
 
 التعليمات:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
-2. قسّم الجدول يوماً بيوم طوال الفترة المحددة بالاعتماد على نوع التقويم المختار ({calendar_type}).
+2. قسّم الجدول يوماً بيوم طوال الفترة المحددة، وعنون الأيام بالتواريخ المحددة ({start_date_str} إلى {end_date_str}).
 3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
 4. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
 """
@@ -207,8 +229,8 @@ if st.button(button_label, type="primary", use_container_width=True):
 You are an expert academic planner and study strategist.
 Please create a detailed, day-by-day optimized study schedule based on the following:
 
-- Calendar Format: {calendar_type}
-- Study Period: From {start_date} to {end_date} (Note: If Hijri calendar is selected, render daily dates using the corresponding Hijri calendar dates).
+- Calendar Type: {calendar_type}
+- Study Period: From {start_date_str} to {end_date_str}
 - Available Study Time: {time_description}
 
 - ASSIGNMENTS:
@@ -222,7 +244,7 @@ Please create a detailed, day-by-day optimized study schedule based on the follo
 
 INSTRUCTIONS:
 1. Respond fully in English.
-2. Provide a structured, day-by-day schedule spanning from {start_date} to {end_date} using the selected calendar format ({calendar_type}).
+2. Provide a structured, day-by-day schedule spanning from {start_date_str} to {end_date_str}.
 3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
 4. Allocate daily time slots realistically within the limit of {time_description}.
 5. Use clear headings and tables for each day.
