@@ -8,7 +8,7 @@ from hijri_converter import Gregorian
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="SP AI",
+    page_title="Personal Academic Planner",
     page_icon="🎓",
     layout="wide"
 )
@@ -35,7 +35,7 @@ st.sidebar.markdown("---")
 # Calendar Type Selector (الميلادي / الهجري)
 if is_arabic:
     calendar_type = st.sidebar.radio(
-        "اختر نوع التقويم  :",
+        "اختر نوع التقويم للعرض والجدول:",
         ("ميلادي (Gregorian)", "هجري (Hijri)")
     )
 else:
@@ -139,10 +139,10 @@ api_key = st.secrets.get("GEMINI_API_KEY", "")
 # Main Page Titles & Description
 # ---------------------------------------------------------
 if is_arabic:
-    st.title("🎓 اس بي اي آي ")
+    st.title("🎓 مخطط المهام والأولويات الأكاديمية")
     st.write("نظم جدول دراستك اليومي، واجباتك، واختباراتك باستخدام الذكاء الاصطناعي.")
 else:
-    st.title("🎓 SP AI")
+    st.title("🎓 Personal Academic Task & Priority Planner")
     st.write("Organize your daily study sessions, assignments, and exams using AI.")
 
 # ---------------------------------------------------------
@@ -213,12 +213,12 @@ if st.button(button_label, type="primary", use_container_width=True):
     else:
         if is_arabic:
             prompt = f"""
-أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
+أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة الفعالة.
 يرجى إنشاء جدول دراسي زمني مفصل ومحدد بالأولويات بناءً على المعطيات التالية:
 
 - التقويم المستخدم: {calendar_type}
 - فترة الدراسة: من تاريخ {start_date_str} إلى تاريخ {end_date_str}
-- معدل وقت الدراسة المتاح: {time_description}
+- معدل وقت الدراسة المتاح يومياً: {time_description}
 
 - الواجبات والمشاريع:
 {assignments if assignments.strip() else 'لا يوجد'}
@@ -229,20 +229,22 @@ if st.button(button_label, type="primary", use_container_width=True):
 - الدروس والمراجعة:
 {lessons if lessons.strip() else 'لا يوجد'}
 
-التعليمات:
+التعليمات الهامة جداً لتنظيم الجلسات:
 1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
 2. قسّم الجدول يوماً بيوم طوال الفترة المحددة، وعنون الأيام بالتواريخ المحددة ({start_date_str} إلى {end_date_str}).
 3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
-4. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
+4. **أهم شرط:** يجب أن تكون مدة كل جلسة دراسية منفردة ما بين **25 إلى 45 دقيقة** كحد أقصى للجلسة الواحدة.
+5. **فترات الاستراحة:** نبه دائماً على وجود فترة استراحة تتراوح بين **5 إلى 10 دقائق** بين كل جلسة دراسية وأخرى لتجديد النشاط.
+6. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
 """
         else:
             prompt = f"""
-You are an expert academic planner and study strategist.
+You are an expert academic planner and study strategist focusing on effective time management.
 Please create a detailed, day-by-day optimized study schedule based on the following:
 
 - Calendar Type: {calendar_type}
 - Study Period: From {start_date_str} to {end_date_str}
-- Available Study Time: {time_description}
+- Available Daily Study Time: {time_description}
 
 - ASSIGNMENTS:
 {assignments if assignments.strip() else 'None provided'}
@@ -253,15 +255,16 @@ Please create a detailed, day-by-day optimized study schedule based on the follo
 - LESSONS TO REVIEW:
 {lessons if lessons.strip() else 'None provided'}
 
-INSTRUCTIONS:
+CRITICAL INSTRUCTIONS FOR SESSIONS:
 1. Respond fully in English.
 2. Provide a structured, day-by-day schedule spanning from {start_date_str} to {end_date_str}.
 3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
-4. Allocate daily time slots realistically within the limit of {time_description}.
-5. Use clear headings and tables for each day.
+4. **Crucial Rule:** Each individual study session must be structured between **25 to 45 minutes** max per session.
+5. **Break Times:** Explicitly include short mandatory rest breaks of **5 to 10 minutes** between consecutive study sessions.
+6. Use clear headings and tables for each day.
 """
 
-        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء خطتك الزمنية..." if is_arabic else "Connecting to AI Models and organizing your plan..."
+        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء خطتك الزمنية الموزعة..." if is_arabic else "Connecting to AI Models and organizing your plan..."
         st.info(info_msg)
 
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
