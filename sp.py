@@ -6,8 +6,8 @@ import time
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Academic Planner",
-    page_icon="AP",
+    page_title="Personal Academic Planner",
+    page_icon="🎓",
     layout="wide"
 )
 
@@ -24,13 +24,14 @@ language = st.sidebar.radio(
 
 is_arabic = (language == "العربية")
 
-# Dynamic Sidebar Inputs
+# Dynamic Sidebar Inputs (API Key input removed from UI)
 if is_arabic:
-    api_key = st.sidebar.text_input("مفتاح Gemini API:", type="password")
     daily_hours = st.sidebar.number_input("ساعات الدراسة اليومية المتاحة:", min_value=1, max_value=16, value=4)
 else:
-    api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
     daily_hours = st.sidebar.number_input("Available Daily Study Hours:", min_value=1, max_value=16, value=4)
+
+# Retrieve API Key securely from Streamlit Secrets
+api_key = st.secrets.get("GEMINI_API_KEY", "")
 
 # ---------------------------------------------------------
 # Main Page Titles & Description
@@ -102,13 +103,12 @@ button_label = "🚀 إنشاء الجدول الدراسي" if is_arabic else "
 
 if st.button(button_label, type="primary", use_container_width=True):
     if not api_key:
-        err_msg = "يرجى إدخال مفتاح Gemini API في القائمة الجانبية!" if is_arabic else "Please enter your Gemini API Key in the sidebar!"
+        err_msg = "مفتاح API غير متوفر في إعدادات Streamlit Secrets!" if is_arabic else "API Key is missing in Streamlit Secrets!"
         st.error(err_msg)
     elif not (assignments.strip() or exams.strip() or lessons.strip()):
         warn_msg = "يرجى تعبئة قسم واحد على الأقل (الواجبات، الاختبارات، أو الدروس) قبل البدء." if is_arabic else "Please fill in at least one section before generating."
         st.warning(warn_msg)
     else:
-        # Prompt definition according to language
         if is_arabic:
             prompt = f"""
 أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة.
