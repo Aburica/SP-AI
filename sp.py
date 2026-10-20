@@ -213,8 +213,8 @@ if st.button(button_label, type="primary", use_container_width=True):
     else:
         if is_arabic:
             prompt = f"""
-أنت مخطط أكاديمي وخبير في تنظيم الوقت والدراسة الفعالة.
-يرجى إنشاء جدول دراسي زمني مفصل ومحدد بالأولويات بناءً على المعطيات التالية:
+أنت مخطط أكاديمي وخبير في تنظيم الوقت ودراسة البومودورو.
+يرجى إنشاء جدول دراسي زمني مفصل بناءً على المعطيات التالية:
 
 - التقويم المستخدم: {calendar_type}
 - فترة الدراسة: من تاريخ {start_date_str} إلى تاريخ {end_date_str}
@@ -229,18 +229,17 @@ if st.button(button_label, type="primary", use_container_width=True):
 - الدروس والمراجعة:
 {lessons if lessons.strip() else 'لا يوجد'}
 
-التعليمات الهامة جداً لتنظيم الجلسات:
-1. قم بالرد باللغة العربية بالكامل وبأسلوب مشجع ومنظم.
-2. قسّم الجدول يوماً بيوم طوال الفترة المحددة، وعنون الأيام بالتواريخ المحددة ({start_date_str} إلى {end_date_str}).
-3. رتب الأولويات حسب الأهمية (الاختبارات > الواجبات القريبة > المراجعة العامة).
-4. **أهم شرط:** يجب أن تكون مدة كل جلسة دراسية منفردة ما بين **25 إلى 45 دقيقة** كحد أقصى للجلسة الواحدة.
-5. **فترات الاستراحة:** نبه دائماً على وجود فترة استراحة تتراوح بين **5 إلى 10 دقائق** بين كل جلسة دراسية وأخرى لتجديد النشاط.
-6. استخدم نقاطاً واضحة وجداول لكل يوم ليكون الجدول سهل التنفيذ.
+🚨 تعليمات صارمة جداً وصريحة بخصوص المدة الزمنية للجلسات:
+1. ممنوع منعا باتاً أن تتجاوز مدة أي جلسة دراسية مفردة 45 دقيقة.
+2. يجب أن تكون مدة كل جلسة دراسية **حصراً بين 25 إلى 45 دقيقة** كحد أقصى (مثلاً: 30 دقيقة، 40 دقيقة، 45 دقيقة). لا تقم أبداً بوضع جلسة مدتها 50 دقيقة أو أكثر.
+3. يجب إدراج **فترة استراحة إجبارية تتراوح بين 5 إلى 10 دقائق** بوضوح تام بعد كل جلسة دراسية.
+4. قسّم الجدول يوماً بيوم طوال الفترة المحددة، وعنون الأيام بالتواريخ ({start_date_str} إلى {end_date_str}).
+5. استخدم جدولاً واضحاً يوضح (الفترة / الجلسة، المدة بالدقائق، المادة والمهام، الهدف).
 """
         else:
             prompt = f"""
-You are an expert academic planner and study strategist focusing on effective time management.
-Please create a detailed, day-by-day optimized study schedule based on the following:
+You are an expert academic planner specializing in strict time-blocking and Pomodoro techniques.
+Please create a detailed, day-by-day study schedule based on the following:
 
 - Calendar Type: {calendar_type}
 - Study Period: From {start_date_str} to {end_date_str}
@@ -255,16 +254,15 @@ Please create a detailed, day-by-day optimized study schedule based on the follo
 - LESSONS TO REVIEW:
 {lessons if lessons.strip() else 'None provided'}
 
-CRITICAL INSTRUCTIONS FOR SESSIONS:
-1. Respond fully in English.
-2. Provide a structured, day-by-day schedule spanning from {start_date_str} to {end_date_str}.
-3. Prioritize tasks based on urgency (Exams > Upcoming Assignments > General Review).
-4. **Crucial Rule:** Each individual study session must be structured between **25 to 45 minutes** max per session.
-5. **Break Times:** Explicitly include short mandatory rest breaks of **5 to 10 minutes** between consecutive study sessions.
-6. Use clear headings and tables for each day.
+🚨 STRICT CRITICAL INSTRUCTIONS FOR SESSION DURATION:
+1. It is strictly forbidden for any single study session to exceed 45 minutes.
+2. Every single study session duration MUST be strictly between **25 to 45 minutes max** (e.g., 30 mins, 40 mins, 45 mins). Never set a session to 50 minutes or more.
+3. Explicitly include a mandatory rest break of **5 to 10 minutes** between consecutive study sessions.
+4. Provide a structured day-by-day schedule from {start_date_str} to {end_date_str}.
+5. Use clear tables showing session numbers, exact durations in minutes, tasks, and goals.
 """
 
-        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء خطتك الزمنية الموزعة..." if is_arabic else "Connecting to AI Models and organizing your plan..."
+        info_msg = "جاري الاتصال بالذكاء الاصطناعي وبناء خطتك الزمنية بالمدد الصحيحة..." if is_arabic else "Connecting to AI Models and organizing your plan..."
         st.info(info_msg)
 
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
