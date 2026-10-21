@@ -1,17 +1,26 @@
+import streamlit as st
+import streamlit.components.v1 as components
+
+st.set_page_config(
+    page_page_title="Chronicles of Shinra - Chapter 1",
+    page_icon="⚔️",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
+
+game_html = """
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chronicles of Shinra - Chapter 1 (3D World)</title>
-    <!-- Tailwind CSS -->
+    <title>Shinra RPG - Chapter 1: The Tragedy of 792 AD</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Three.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Press+Start+2P&family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
 
     <style>
         * {
@@ -19,675 +28,821 @@
             -webkit-user-select: none;
             touch-action: manipulation;
         }
-        body, html {
+        body {
+            background-color: #05070d;
+            color: #f1f5f9;
+            font-family: 'Tajawal', sans-serif;
+            overflow: hidden;
             margin: 0;
             padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            font-family: 'Tajawal', sans-serif;
-            background-color: #05070a;
-            color: #f3f4f6;
         }
         .font-cinzel { font-family: 'Cinzel', serif; }
-        
-        #game-canvas {
-            width: 100%;
-            height: 100%;
+        .font-pixel { font-family: 'Press Start 2P', monospace; }
+
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.95), 0 0 20px rgba(239, 68, 68, 0.25);
+        }
+
+        canvas {
             display: block;
+            image-rendering: pixelated;
+            background: #000;
         }
 
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-        }
-
-        .dialogue-box {
-            background: rgba(10, 14, 23, 0.95);
-            backdrop-filter: blur(16px);
-            border: 2px solid rgba(229, 169, 60, 0.5);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9);
-        }
-
-        .shake-screen {
+        /* Screen Shake Effect */
+        .shake {
             animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both infinite;
         }
 
         @keyframes shake {
             10%, 90% { transform: translate3d(-3px, 0, 0); }
             20%, 80% { transform: translate3d(5px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-8px, 0, 0); }
-            40%, 60% { transform: translate3d(8px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-7px, 0, 0); }
+            40%, 60% { transform: translate3d(7px, 0, 0); }
+        }
+
+        /* Dark Aura Particle Glow */
+        .dark-aura-active {
+            box-shadow: inset 0 0 80px #000, 0 0 50px #991b1b;
+            animation: pulse-aura 1.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulse-aura {
+            from { filter: drop-shadow(0 0 15px #dc2626); }
+            to { filter: drop-shadow(0 0 35px #000000); }
         }
     </style>
 </head>
-<body class="relative">
+<body class="h-screen w-screen flex flex-col justify-between items-center p-2 md:p-4 select-none">
 
-    <canvas id="game-canvas"></canvas>
+    <!-- Top Navigation Header -->
+    <header class="w-full max-w-5xl flex justify-between items-center bg-slate-900/90 border border-slate-800 px-4 py-2 rounded-xl shadow-lg z-20">
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <span class="text-red-500 font-extrabold text-xl font-cinzel tracking-wider"><i class="fa-solid fa-dragon ml-2"></i>SHINRA RPG</span>
+            <span class="text-xs bg-red-950 text-red-400 px-2.5 py-1 rounded-md border border-red-800 font-bold">الفصل 1: سنة 792 م</span>
+        </div>
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <div id="scene-tag" class="text-xs bg-slate-800 text-amber-400 px-3 py-1 rounded-lg border border-slate-700 font-bold flex items-center gap-2">
+                <i class="fa-solid fa-location-dot"></i> <span id="current-location-text">بيت الجبل</span>
+            </div>
+            <button onclick="toggleAudio()" id="btn-audio" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 rounded-lg border border-slate-700 transition">
+                <i class="fa-solid fa-volume-high text-emerald-400" id="audio-icon"></i>
+            </button>
+        </div>
+    </header>
 
-    <div id="ui-layer" class="absolute inset-0 pointer-events-none flex flex-col justify-between p-3 md:p-6 z-10">
-        
-        <!-- Top Navigation HUD -->
-        <div id="top-hud" class="flex justify-between items-start w-full">
-            <!-- Player Status Panel -->
-            <div class="glass-panel p-3 rounded-xl flex items-center space-x-3 space-x-reverse min-w-[240px]">
-                <div class="w-10 h-10 rounded-full bg-amber-600/30 border-2 border-amber-500 flex items-center justify-center font-bold text-amber-400 text-lg">
-                    ⚔️
+    <!-- Main Game Frame -->
+    <main class="relative w-full max-w-5xl my-auto flex flex-col items-center justify-center">
+        <div id="game-container" class="w-full aspect-[16/9] max-h-[72vh] bg-black rounded-2xl overflow-hidden border-2 border-slate-800 relative">
+            
+            <!-- Game Canvas -->
+            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+            <!-- Visual Novel Story Overlay Dialog Box -->
+            <div id="vn-overlay" class="absolute bottom-3 left-3 right-3 bg-slate-950/95 border-2 border-slate-700/80 rounded-xl p-3 md:p-4 text-white shadow-2xl flex flex-col md:flex-row items-center gap-4 hidden z-30 transition-all duration-300">
+                <div id="vn-avatar-box" class="w-20 h-20 md:w-24 md:h-24 rounded-lg border-2 border-amber-600/60 bg-slate-900 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-inner">
+                    <div id="vn-avatar-sprite" class="w-full h-full"></div>
                 </div>
-                <div class="flex-1">
-                    <div class="flex justify-between text-xs font-semibold mb-1">
-                        <span class="text-amber-400">شينرا (9 سنوات)</span>
-                        <span id="player-hp-text" class="text-emerald-400">1500 / 1500 HP</span>
+                <div class="flex-1 w-full flex flex-col justify-between h-full">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span id="vn-speaker-name" class="font-bold text-amber-400 text-base md:text-lg tracking-wide">شينرا</span>
+                            <span id="vn-speaker-info" class="text-xs text-slate-400 font-mono">العمر 9 | 142 سم</span>
+                        </div>
+                        <p id="vn-dialog-text" class="text-sm md:text-base text-slate-200 leading-relaxed min-h-[48px]">جاري تحميل الأحداث...</p>
                     </div>
-                    <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                        <div id="player-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-200" style="width: 100%;"></div>
+                    <div class="flex justify-end mt-2">
+                        <button id="vn-next-btn" onclick="advanceStory()" class="px-5 py-1.5 bg-amber-600 hover:bg-amber-500 active:scale-95 text-slate-950 text-xs font-black rounded-lg shadow-md transition flex items-center gap-2">
+                            <span>متابعة</span>
+                            <i class="fa-solid fa-chevron-left text-xs"></i>
+                        </button>
                     </div>
-                    <div class="text-[10px] text-slate-400 mt-1 flex justify-between">
-                        <span>الذهب: <strong id="gold-text" class="text-amber-300">0 قطعة</strong></span>
-                        <span>السلاح: <strong class="text-amber-300">فأس الحطاب</strong></span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Current Objective Tracker -->
-            <div id="objective-panel" class="glass-panel px-5 py-2.5 rounded-xl text-center">
-                <div class="text-[11px] uppercase font-bold text-amber-500 tracking-widest mb-0.5" id="stage-title">الفصل الأول - سنة 792 م</div>
-                <div id="objective-text" class="text-xs md:text-sm font-medium text-slate-200">تحدث مع عائلتك أمام بيت الجبل [E]</div>
-            </div>
-        </div>
-
-        <!-- Bear RPG Battle HUD Overlay -->
-        <div id="boss-hud" class="w-full max-w-xl mx-auto glass-panel p-4 rounded-xl text-center hidden border-red-500/50 pointer-events-auto">
-            <div class="flex justify-between items-center mb-1">
-                <span class="text-red-500 font-bold uppercase tracking-widest text-xs md:text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-skull"></i> الدب العملاق ذو العينين الحمراوين
-                </span>
-                <span id="boss-hp-text" class="text-red-400 text-xs font-bold">500 / 500 HP</span>
-            </div>
-            <div class="w-full h-3.5 bg-slate-900 rounded-full overflow-hidden border border-red-900 mb-3">
-                <div id="boss-hp-bar" class="h-full bg-gradient-to-r from-red-700 to-rose-500 transition-all duration-200" style="width: 100%;"></div>
-            </div>
-            <div class="flex justify-center gap-2">
-                <button id="attack-btn" onclick="attackBear()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-6 py-2 rounded-lg text-xs md:text-sm shadow-lg border border-red-400 active:scale-95 transition">
-                    ⚔️ هجوم بالفأس (Space / اضغط هنا)
-                </button>
-            </div>
-        </div>
-
-        <!-- Interactive Action Hint (Mobile & PC) -->
-        <div id="action-prompt" class="hidden pointer-events-auto mx-auto bg-amber-500 text-slate-950 font-black px-6 py-2 rounded-full shadow-2xl text-xs md:text-sm animate-bounce cursor-pointer" onclick="triggerAction()">
-            <span id="action-prompt-text">اضغط [E] للتفاعل</span>
-        </div>
-
-        <!-- Cart Attachment Status Display -->
-        <div id="cart-status-bar" class="glass-panel px-4 py-2 rounded-lg mx-auto text-xs text-amber-400 font-bold flex items-center gap-3 border border-amber-500/40">
-            <i class="fa-solid fa-truck-ramp-box text-base"></i>
-            <span id="cart-status-text">العربة مفصولة | اقترب من العربة واضغط [G] لإمساكها / تركها</span>
-        </div>
-
-        <!-- Dialogue Box -->
-        <div id="dialogue-container" class="dialogue-box w-full max-w-3xl mx-auto p-4 rounded-2xl pointer-events-auto hidden transition-all duration-300 mb-2">
-            <div class="flex items-start gap-3">
-                <div id="speaker-avatar" class="w-12 h-12 rounded-full bg-amber-600/30 border-2 border-amber-500 flex-shrink-0 flex items-center justify-center text-2xl font-bold text-amber-400 shadow-inner">
-                    👤
-                </div>
-                <div class="flex-1">
-                    <div class="flex justify-between items-center mb-1">
-                        <span id="speaker-name" class="font-bold text-amber-400 text-base">اسم الشخصية</span>
-                        <span id="speaker-role" class="text-[10px] text-slate-400 font-mono">معلومات</span>
-                    </div>
-                    <p id="dialogue-text" class="text-slate-200 text-xs md:text-sm leading-relaxed">
-                        نص الحوار...
-                    </p>
                 </div>
             </div>
-            <div class="mt-3 flex justify-end">
-                <button id="dialogue-next-btn" onclick="nextDialogue()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-5 py-1.5 rounded-lg text-xs transition-all transform active:scale-95 flex items-center gap-2 shadow-lg">
-                    <span>التالي</span> <i class="fa-solid fa-chevron-left text-xs"></i>
-                </button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Title Screen & End Overlay -->
-    <div id="full-screen-overlay" class="absolute inset-0 bg-black z-30 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-1000">
-        <div id="title-screen-content" class="max-w-xl space-y-6">
-            <div class="text-amber-500/80 font-mono tracking-widest text-xs uppercase">سنة 792 م - جبل شينرا (3D)</div>
-            <h1 class="text-4xl md:text-6xl font-extrabold font-cinzel tracking-wider text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 drop-shadow-2xl">
-                CHRONICLES OF SHINRA
-            </h1>
-            <p class="text-slate-400 text-xs md:text-sm max-w-md mx-auto leading-relaxed">
-                الفصل الأول: الجبل مرتفع والنزول إلى القرية التجارية الضخمة والتفاعل الإمساك بالعربة.
-            </p>
-            <div class="pt-4">
-                <button onclick="startGame()" class="pointer-events-auto bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-black px-8 py-3 rounded-xl text-sm shadow-2xl uppercase transition-all transform hover:scale-105 active:scale-95 border border-amber-300/40">
-                    بدء اللعب بالـ 3D
-                </button>
-            </div>
-        </div>
-    </div>
+            <!-- RPG Bear Battle Interface -->
+            <div id="battle-overlay" class="absolute inset-0 bg-slate-950/95 p-4 flex flex-col justify-between hidden z-30">
+                <div class="flex justify-between items-center bg-slate-900/90 p-3 rounded-xl border border-slate-800">
+                    <div class="w-5/12">
+                        <div class="flex justify-between text-xs font-bold mb-1">
+                            <span class="text-cyan-400">شينرا (9 سنوات)</span>
+                            <span id="shinra-hp-text" class="text-slate-300">1500 / 1500 HP</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
+                            <div id="shinra-hp-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-full transition-all duration-300"></div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1"><i class="fa-solid fa-axe text-amber-500 ml-1"></i> السلاح: فأس الحطاب الغامض</div>
+                    </div>
 
+                    <div class="text-red-500 font-pixel text-xs md:text-sm animate-pulse">VS</div>
+
+                    <div class="w-5/12 text-left">
+                        <div class="flex justify-between text-xs font-bold mb-1">
+                            <span class="text-red-500">الدب الأحيائي الأحمر</span>
+                            <span id="bear-hp-text" class="text-slate-300">500 / 500 HP</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
+                            <div id="bear-hp-bar" class="bg-gradient-to-r from-red-600 to-rose-400 h-full w-full transition-all duration-300 float-left"></div>
+                        </div>
+                        <div class="text-[10px] text-red-400 mt-1">مستوى التهديد: خطير جداً</div>
+                    </div>
+                </div>
+
+                <!-- Central Arena Visual -->
+                <div class="flex-1 my-2 relative flex items-center justify-around border border-slate-800/60 rounded-xl bg-slate-900/50 overflow-hidden">
+                    <div id="battle-shinra" class="relative transition-transform duration-200">
+                        <div class="w-28 h-28 bg-cyan-950/40 border-2 border-cyan-500/50 rounded-2xl flex items-center justify-center shadow-lg relative">
+                            <svg class="w-20 h-20" viewBox="0 0 100 100">
+                                <circle cx="50" cy="30" r="18" fill="#fca5a5"/>
+                                <path d="M50 12 C 40 10, 35 25, 30 30 C 45 20, 55 20, 70 30 C 65 25, 60 10, 50 12 Z" fill="#334155"/>
+                                <circle cx="43" cy="28" r="3" fill="#0284c7"/>
+                                <circle cx="57" cy="28" r="3" fill="#0284c7"/>
+                                <path d="M 30 48 L 70 48 L 65 90 L 35 90 Z" fill="#0284c7"/>
+                                <line x1="70" y1="50" x2="85" y2="25" stroke="#78350f" stroke-width="4"/>
+                                <path d="M 80 20 C 95 15, 95 35, 80 35 Z" fill="#94a3b8"/>
+                            </svg>
+                            <span class="absolute -top-3 bg-cyan-900 text-cyan-300 text-[10px] px-2 py-0.5 rounded border border-cyan-500">شينرا</span>
+                        </div>
+                    </div>
+
+                    <div id="battle-bear" class="relative transition-transform duration-200">
+                        <div class="w-32 h-32 bg-red-950/40 border-2 border-red-600/60 rounded-2xl flex items-center justify-center shadow-lg relative">
+                            <svg class="w-24 h-24" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="38" fill="#271c19"/>
+                                <circle cx="25" cy="20" r="12" fill="#1c1311"/>
+                                <circle cx="75" cy="20" r="12" fill="#1c1311"/>
+                                <circle cx="38" cy="42" r="5" fill="#ef4444" class="animate-pulse"/>
+                                <circle cx="62" cy="42" r="5" fill="#ef4444" class="animate-pulse"/>
+                                <circle cx="39" cy="42" r="2" fill="#ffffff"/>
+                                <circle cx="63" cy="42" r="2" fill="#ffffff"/>
+                                <polygon points="40,65 44,75 48,65" fill="#ffffff"/>
+                                <polygon points="52,65 56,75 60,65" fill="#ffffff"/>
+                            </svg>
+                            <span class="absolute -top-3 bg-red-950 text-red-400 text-[10px] px-2 py-0.5 rounded border border-red-700">الدب العملاق</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div id="battle-log" class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs md:text-sm text-slate-300 h-24 overflow-y-auto leading-relaxed">
+                        <p class="text-amber-400 font-bold">ظهر الدب المفترس ذو العينين الحمراوين! استعد للقتال بالفأس!</p>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <button onclick="executeBattleAction('attack')" class="w-full h-full py-3 bg-gradient-to-r from-red-600 to-rose-700 hover:from-red-500 hover:to-rose-600 active:scale-95 text-white font-bold rounded-xl border border-red-500 shadow-md transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-hand-fist text-lg"></i>
+                            <span>ضربة الفأس (30-60 ضرر)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mobile Controls Layer -->
+            <div id="mobile-controls" class="absolute bottom-4 left-4 right-4 flex justify-between items-end pointer-events-none z-20 md:hidden">
+                <div class="pointer-events-auto grid grid-cols-3 gap-1 w-32 h-32 bg-slate-950/70 p-1.5 rounded-2xl backdrop-blur-sm border border-slate-800">
+                    <div></div>
+                    <button id="btn-up" class="bg-slate-800/90 active:bg-amber-600 rounded-lg flex items-center justify-center text-white text-lg"><i class="fa-solid fa-chevron-up"></i></button>
+                    <div></div>
+                    <button id="btn-left" class="bg-slate-800/90 active:bg-amber-600 rounded-lg flex items-center justify-center text-white text-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                    <div class="bg-slate-900/50 rounded-lg flex items-center justify-center text-slate-600 text-xs font-mono">PAD</div>
+                    <button id="btn-right" class="bg-slate-800/90 active:bg-amber-600 rounded-lg flex items-center justify-center text-white text-lg"><i class="fa-solid fa-chevron-right"></i></button>
+                    <div></div>
+                    <button id="btn-down" class="bg-slate-800/90 active:bg-amber-600 rounded-lg flex items-center justify-center text-white text-lg"><i class="fa-solid fa-chevron-down"></i></button>
+                    <div></div>
+                </div>
+
+                <div class="pointer-events-auto flex flex-col gap-2">
+                    <button id="btn-dash" class="w-14 h-14 bg-amber-600/90 active:bg-amber-500 text-slate-950 rounded-full flex flex-col items-center justify-center border-2 border-amber-400 shadow-lg text-xs font-black">
+                        <i class="fa-solid fa-bolt text-sm"></i>
+                        <span>ركض</span>
+                    </button>
+                    <button id="btn-action" class="w-16 h-16 bg-red-600/95 active:bg-red-500 text-white rounded-full flex flex-col items-center justify-center border-2 border-red-400 shadow-xl text-xs font-bold">
+                        <i class="fa-solid fa-hand text-base"></i>
+                        <span>تفاعل (E)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Objective Status & Gold Bar -->
+            <div id="objective-banner" class="absolute top-3 right-3 bg-slate-950/85 border border-slate-800 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 flex items-center gap-2 z-20 backdrop-blur-sm">
+                <i class="fa-solid fa-compass text-amber-400"></i>
+                <span id="objective-text">اقترب من المنزل للحديث مع العائلة.</span>
+            </div>
+
+            <div id="gold-banner" class="absolute top-3 left-3 bg-slate-950/85 border border-amber-800/80 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-400 flex items-center gap-2 z-20 backdrop-blur-sm">
+                <i class="fa-solid fa-coins text-amber-400"></i>
+                <span id="gold-amount">0 قطعة ذهب</span>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Desktop Controls Instructions Bar -->
+    <footer class="w-full max-w-5xl bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-400 flex flex-wrap justify-between items-center gap-2 z-20">
+        <div class="flex items-center gap-4">
+            <span><strong class="text-slate-200">التحكم:</strong> أسهم الاتجاهات / WASD للتحرك</span>
+            <span><strong class="text-slate-200">Shift:</strong> الجري بسرعة 40 كم/س</span>
+            <span><strong class="text-slate-200">Space / E:</strong> التفاعل / التجارة / نقل العائلة</span>
+        </div>
+        <div class="text-slate-500 font-mono text-[11px]">
+            HTML5 Visual Scene Engine • Shinra Chapter 1
+        </div>
+    </footer>
+
+    <!-- MAIN GAME ENGINE JAVASCRIPT LOGIC -->
     <script>
-        const GameStage = {
-            TITLE: 0,
-            INTRO_HOUSE: 1,
-            DESCENT_TO_VILLAGE: 2,
-            VILLAGE_TRADE: 3,
-            FOREST_RETURN: 4,
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const CANVAS_WIDTH = 960;
+        const CANVAS_HEIGHT = 540;
+        canvas.width = CANVAS_WIDTH;
+        canvas.height = CANVAS_HEIGHT;
+
+        let audioCtx = null;
+        let soundEnabled = true;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playTone(freq, duration = 0.1, type = 'sine') {
+            if (!soundEnabled) return;
+            try {
+                initAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e){}
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('audio-icon').className = soundEnabled ? 
+                "fa-solid fa-volume-high text-emerald-400" : "fa-solid fa-volume-xmark text-red-400";
+        }
+
+        const SCENARIOS = {
+            TITLE_792: 0,
+            MOUNTAIN_HOME_INTRO: 1,
+            WALK_TO_MARKET_PATH: 2,
+            VILLAGE_MARKET_TRADE: 3,
+            FOREST_NIGHT_RETURN: 4,
             BEAR_BATTLE: 5,
-            COOK_MEAT: 6,
-            RETURN_DESTROYED_HOME: 7,
+            COOKING_BEAR_MEAT: 6,
+            RUSH_HOME_DESTROYED: 7,
             TRAGEDY_DISCOVERY: 8,
-            LOAD_FAMILY_CART: 9,
-            CART_RUSH_HOSPITAL: 10,
-            HOSPITAL_DOCTOR: 11,
-            DARK_MAGIC_END: 12
+            LOADING_FAMILY_CART: 9,
+            RUSH_TO_HOSPITAL_SPEED: 10,
+            DOCTOR_HOSPITAL_SCENE: 11,
+            DARK_MAGIC_AWAKENING: 12
         };
 
-        let currentStage = GameStage.TITLE;
-        let goldCount = 0;
-        let playerHP = 1500, maxPlayerHP = 1500;
-        let bearHP = 500, maxBearHP = 500;
+        let gameState = {
+            step: SCENARIOS.TITLE_792,
+            gold: 0,
+            shinraHP: 1500,
+            maxShinraHP: 1500,
+            bearHP: 500,
+            maxBearHP: 500,
+            isDashing: false,
+            carriedCount: 0,
+            familyLoaded: { yura: false, soho: false, maki: false },
+            titleTimer: 0,
+            currentLocation: "بيت الجبل"
+        };
 
-        // 3D Engine References
-        let scene, camera, renderer, clock = new THREE.Clock();
-        let playerMesh, cartMesh, bearMesh;
-        let houseGroup, destroyedHouseGroup, villageGroup, hospitalGroup;
-        let isCartAttached = false;
-        let familyLoaded = { yura: false, soho: false, maki: false };
-        let dialogueIndex = 0, currentDialogueList = [], dialogueCallback = null;
+        const player = {
+            x: 180,
+            y: 320,
+            width: 28,
+            height: 28,
+            speed: 3.2,
+            dashMultiplier: 2.2,
+            isMoving: false
+        };
 
-        // Input Controls
-        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false, Shift: false };
+        const keys = { up: false, down: false, left: false, right: false, dash: false };
 
-        function init3D() {
-            const container = document.getElementById('game-canvas');
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x0c1322);
-            scene.fog = new THREE.FogExp2(0x0c1322, 0.005);
-
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ canvas: container, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-
-            // Lights
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-            scene.add(ambientLight);
-
-            const sunLight = new THREE.DirectionalLight(0xfff5ea, 0.9);
-            sunLight.position.set(100, 150, 50);
-            sunLight.castShadow = true;
-            scene.add(sunLight);
-
-            // Terrain with Mountain Elevation
-            buildTerrainAndMountain();
-            buildMountainHouse();
-            buildVillage3D();
-            buildForest3D();
-            buildHospital3D();
-
-            // Dynamic Interactive Meshes
-            buildPlayer3D();
-            buildCart3D();
-            buildBear3D();
-
-            window.addEventListener('resize', onWindowResize);
-            setupInputListeners();
-        }
-
-        function buildTerrainAndMountain() {
-            // Expanded 3D Ground
-            const terrainGeo = new THREE.PlaneGeometry(600, 600, 80, 80);
-            terrainGeo.rotateX(-Math.PI / 2);
-
-            const pos = terrainGeo.attributes.position;
-            for (let i = 0; i < pos.count; i++) {
-                const x = pos.getX(i);
-                const z = pos.getZ(i);
-                
-                // Real High Mountain Peak on the North-West (-150, -150)
-                const distToPeak = Math.hypot(x + 150, z + 150);
-                if (distToPeak < 140) {
-                    pos.setY(i, Math.cos(distToPeak / 140 * Math.PI) * 45 + 45);
-                }
-            }
-            terrainGeo.computeVertexNormals();
-
-            const terrainMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.9 });
-            const terrain = new THREE.Mesh(terrainGeo, terrainMat);
-            terrain.receiveShadow = true;
-            scene.add(terrain);
-
-            // Road curving down from Mountain top to Village
-            const pathPoints = [
-                new THREE.Vector3(-150, 85, -150),
-                new THREE.Vector3(-100, 50, -90),
-                new THREE.Vector3(-40, 25, -30),
-                new THREE.Vector3(20, 5, 20),
-                new THREE.Vector3(120, 0, 120)
-            ];
-            const curve = new THREE.CatmullRomCurve3(pathPoints);
-            const tubeGeo = new THREE.TubeGeometry(curve, 64, 5, 8, false);
-            const pathMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 1 });
-            const pathMesh = new THREE.Mesh(tubeGeo, pathMat);
-            pathMesh.position.y = -4;
-            scene.add(pathMesh);
-        }
-
-        function buildMountainHouse() {
-            houseGroup = new THREE.Group();
-            houseGroup.position.set(-150, 88, -150);
-
-            // House Walls
-            const houseGeo = new THREE.BoxGeometry(16, 10, 14);
-            const houseMat = new THREE.MeshStandardMaterial({ color: 0x542d12 });
-            const houseBody = new THREE.Mesh(houseGeo, houseMat);
-            houseBody.position.y = 5;
-            houseGroup.add(houseBody);
-
-            // Roof
-            const roofGeo = new THREE.ConeGeometry(13, 7, 4);
-            roofGeo.rotateY(Math.PI / 4);
-            const roofMat = new THREE.MeshStandardMaterial({ color: 0x991b1b });
-            const roof = new THREE.Mesh(roofGeo, roofMat);
-            roof.position.y = 13.5;
-            houseGroup.add(roof);
-
-            scene.add(houseGroup);
-
-            // Destroyed House Variant (Burnt Ruin)
-            destroyedHouseGroup = new THREE.Group();
-            destroyedHouseGroup.position.set(-150, 88, -150);
-            destroyedHouseGroup.visible = false;
-
-            for (let i = 0; i < 15; i++) {
-                const plankGeo = new THREE.BoxGeometry(2 + Math.random()*4, 1, 6 + Math.random()*4);
-                const plankMat = new THREE.MeshStandardMaterial({ color: 0x1c1917 });
-                const plank = new THREE.Mesh(plankGeo, plankMat);
-                plank.position.set((Math.random() - 0.5)*16, 0.5, (Math.random() - 0.5)*16);
-                plank.rotation.set(Math.random(), Math.random(), Math.random());
-                destroyedHouseGroup.add(plank);
-            }
-            scene.add(destroyedHouseGroup);
-        }
-
-        function buildVillage3D() {
-            villageGroup = new THREE.Group();
-            villageGroup.position.set(120, 0, 120);
-
-            // Large Village Layout
-            for (let x = -2; x <= 2; x++) {
-                for (let z = -2; z <= 2; z++) {
-                    if (x === 0 && z === 0) continue; // Central Plaza
-
-                    const buildingGroup = new THREE.Group();
-                    buildingGroup.position.set(x * 30, 0, z * 30);
-
-                    // Randomize House / Store Type
-                    const width = 12 + Math.random() * 4;
-                    const height = 8 + Math.random() * 6;
-                    const depth = 12 + Math.random() * 4;
-
-                    const bodyMat = new THREE.MeshStandardMaterial({ 
-                        color: (x + z) % 2 === 0 ? 0x854d0e : 0x334155 
-                    });
-                    const body = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), bodyMat);
-                    body.position.y = height / 2;
-
-                    const roofMat = new THREE.MeshStandardMaterial({ color: 0x0284c7 });
-                    const roof = new THREE.Mesh(new THREE.ConeGeometry(width * 0.8, 6, 4), roofMat);
-                    roof.rotateY(Math.PI / 4);
-                    roof.position.y = height + 3;
-
-                    buildingGroup.add(body, roof);
-                    villageGroup.add(buildingGroup);
-                }
-            }
-            scene.add(villageGroup);
-        }
-
-        function buildForest3D() {
-            const forestGroup = new THREE.Group();
-            for (let i = 0; i < 60; i++) {
-                const treeGroup = new THREE.Group();
-                const trunk = new THREE.Mesh(
-                    new THREE.CylinderGeometry(0.8, 1.2, 8),
-                    new THREE.MeshStandardMaterial({ color: 0x451a03 })
-                );
-                trunk.position.y = 4;
-
-                const foliage = new THREE.Mesh(
-                    new THREE.ConeGeometry(6, 14, 5),
-                    new THREE.MeshStandardMaterial({ color: 0x064e3b })
-                );
-                foliage.position.y = 12;
-
-                treeGroup.add(trunk, foliage);
-                
-                // Spread along the mountain slope
-                const x = -80 + (Math.random() - 0.5) * 160;
-                const z = -60 + (Math.random() - 0.5) * 160;
-                const distToPeak = Math.hypot(x + 150, z + 150);
-                const y = distToPeak < 140 ? Math.cos(distToPeak / 140 * Math.PI) * 45 + 45 : 0;
-
-                treeGroup.position.set(x, y, z);
-                forestGroup.add(treeGroup);
-            }
-            scene.add(forestGroup);
-        }
-
-        function buildHospital3D() {
-            hospitalGroup = new THREE.Group();
-            hospitalGroup.position.set(-120, 0, 100);
-
-            const building = new THREE.Mesh(
-                new THREE.BoxGeometry(24, 14, 20),
-                new THREE.MeshStandardMaterial({ color: 0x0f766e })
-            );
-            building.position.y = 7;
-
-            const crossHorizontal = new THREE.Mesh(
-                new THREE.BoxGeometry(8, 2, 0.5),
-                new THREE.MeshStandardMaterial({ color: 0xef4444 })
-            );
-            crossHorizontal.position.set(0, 10, 10.3);
-
-            hospitalGroup.add(building, crossHorizontal);
-            scene.add(hospitalGroup);
-        }
-
-        function buildPlayer3D() {
-            playerMesh = new THREE.Group();
-            
-            // Body
-            const body = new THREE.Mesh(
-                new THREE.CylinderGeometry(1, 1, 3.5),
-                new THREE.MeshStandardMaterial({ color: 0x0284c7 })
-            );
-            body.position.y = 1.75;
-
-            // Head
-            const head = new THREE.Mesh(
-                new THREE.SphereGeometry(1.2, 16, 16),
-                new THREE.MeshStandardMaterial({ color: 0xfca5a5 })
-            );
-            head.position.y = 4;
-
-            playerMesh.add(body, head);
-            playerMesh.position.set(-150, 88, -135); // Mountain Top Home
-            scene.add(playerMesh);
-        }
-
-        function buildCart3D() {
-            cartMesh = new THREE.Group();
-            
-            const frame = new THREE.Mesh(
-                new THREE.BoxGeometry(4.5, 1.5, 6.5),
-                new THREE.MeshStandardMaterial({ color: 0x78350f })
-            );
-            frame.position.y = 1.5;
-
-            const wheelGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.4, 12);
-            wheelGeo.rotateZ(Math.PI / 2);
-            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1c1917 });
-
-            const w1 = new THREE.Mesh(wheelGeo, wheelMat); w1.position.set(-2.4, 1.2, -2);
-            const w2 = new THREE.Mesh(wheelGeo, wheelMat); w2.position.set(2.4, 1.2, -2);
-            const w3 = new THREE.Mesh(wheelGeo, wheelMat); w3.position.set(-2.4, 1.2, 2);
-            const w4 = new THREE.Mesh(wheelGeo, wheelMat); w4.position.set(2.4, 1.2, 2);
-
-            cartMesh.add(frame, w1, w2, w3, w4);
-            cartMesh.position.set(-142, 88, -135);
-            scene.add(cartMesh);
-        }
-
-        function buildBear3D() {
-            bearMesh = new THREE.Group();
-            
-            const body = new THREE.Mesh(
-                new THREE.BoxGeometry(7, 7, 10),
-                new THREE.MeshStandardMaterial({ color: 0x1c1311 })
-            );
-            body.position.y = 3.5;
-
-            const head = new THREE.Mesh(
-                new THREE.SphereGeometry(3, 12, 12),
-                new THREE.MeshStandardMaterial({ color: 0x271c19 })
-            );
-            head.position.set(0, 5, 5);
-
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-            const eye1 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), eyeMat);
-            eye1.position.set(-1.2, 5.5, 7.5);
-            const eye2 = new THREE.Mesh(new THREE.SphereGeometry(0.5, 8, 8), eyeMat);
-            eye2.position.set(1.2, 5.5, 7.5);
-
-            bearMesh.add(body, head, eye1, eye2);
-            bearMesh.position.set(-20, 15, -10);
-            bearMesh.visible = false;
-            scene.add(bearMesh);
-        }
-
-        function setupInputListeners() {
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
-                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
-                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
-                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
-                if (e.key === 'Shift') keys.Shift = true;
-                if (e.key === 'e' || e.key === 'E' || e.key === ' ') triggerAction();
-                if (e.key === 'g' || e.key === 'G') toggleCartAttachment();
-            });
-
-            window.addEventListener('keyup', (e) => {
-                if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
-                if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
-                if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
-                if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
-                if (e.key === 'Shift') keys.Shift = false;
-            });
-        }
+        const CHARACTERS = {
+            shinra: { name: "شينرا", info: "العمر 9 سنوات | 142 سم", color: "#38bdf8" },
+            yura: { name: "يورا (الأب)", info: "العمر 54 سنة | 178 سم", color: "#f59e0b" },
+            soho: { name: "سوهو (الأخ)", info: "العمر 18 سنة | 182 سم", color: "#22c55e" },
+            maki: { name: "ماكي (الأخت)", info: "العمر 13 سنة | 154 سم", color: "#ef4444" },
+            merchant: { name: "تاجر القرية", info: "سوق جبل شينرا", color: "#fbbf24" },
+            yuno: { name: "الطبيب يونو", info: "طبيب القرية (34 سنة)", color: "#14b8a6" },
+            narrator: { name: "الراوي", info: "حقبة 792 م", color: "#a855f7" }
+        };
 
         const DIALOGUES = {
             INTRO: [
-                { speaker: "يورا (الأب)", role: "العمر 54 | مريض", text: "ماكي... أحضري دواء الحمى بسرعة..." },
-                { speaker: "ماكي (الأخت)", role: "العمر 13", text: "تفضل يا أبي! اشربه الآن فوراً!" },
-                { speaker: "سوهو (الأخ)", role: "العمر 18", text: "لقد عدتُ من السوق! ومعي شينرا الصغير الذي تسلل في عربتي!" },
-                { speaker: "شينرا", role: "العمر 9", text: "ساعدت سوهو في تجارة اللوتس وجنينا 30 قطعة ذهب!" },
-                { speaker: "سوهو", role: "العمر 18", text: "اليوم أنا تعبان جداً، هل يمكنك النزول للقرية للتداول يا شينرا؟" },
-                { speaker: "شينرا", role: "العمر 9", text: "بالتأكيد! سأنزل الآن عبر طريق الجبل إلى سوق القرية!" }
+                { speaker: 'yura', text: "ماكي..." },
+                { speaker: 'maki', text: "أبي! ما الذي يحدث لك؟!" },
+                { speaker: 'yura', text: "أحضري لي دواء الحمي... بسرعة." },
+                { speaker: 'maki', text: "تفضل يا أبي، اشربه الآن فوراً!" },
+                { speaker: 'narrator', text: "تصل عربة خيول إلى أعلى الجبل أمام منزل العائلة..." },
+                { speaker: 'soho', text: "أهلاً ماكي! أهلاً أبي! لقد عدتُ أخيراً من رحلة التداول!" },
+                { speaker: 'maki', text: "أهلاً بعودتك يا سوهو! ولكن... أين شينرا الصغير؟!" },
+                { speaker: 'shinra', text: "أنا هنا بالأسفل!" },
+                { speaker: 'narrator', text: "*ماكي تضرب شينرا بغضب على رأسه!*" },
+                { speaker: 'shinra', text: "آخ! لماذا ضربتيني؟!" },
+                { speaker: 'maki', text: "ظننتك ضعت في الغابة! ماذا كنت تفعل مع سوهو؟" },
+                { speaker: 'soho', text: "لقد تسلل داخل عربتي البارحة لأنه كان فضولياً!" },
+                { speaker: 'shinra', text: "ولكني ساعدته! باعت زهور اللوتس بـ 30 قطعة ذهبية كاملة!" },
+                { speaker: 'yura', text: "*يبتسم بحنان رغم مرضه الشديد*" },
+                { speaker: 'narrator', text: "بعد مرور أسبوع كامل..." },
+                { speaker: 'soho', text: "أنا مرهق جداً اليوم... لا أستطيع الذهاب للسوق." },
+                { speaker: 'maki', text: "ومن سينزل لقرية السوق لتداول البضائع اليوم إذن؟!" },
+                { speaker: 'shinra', text: "أنا سأذهب! تعلمت كيف أحسب الأسعار وأقنع التجار. أعطني البضائع والفأس للحماية!" }
             ],
-            VILLAGE: [
-                { speaker: "تاجر القرية", role: "سوق القرية التجارية", text: "أهلاً بك يا صغيري! سأشتري منك كل البضائع بـ 30 قطعة ذهب!" },
-                { speaker: "شينرا", role: "العمر 9", text: "صفقة ممتازة! حل الليل الآن، حان وقت العودة عبر الغابة والجبل." }
+            TRADING: [
+                { speaker: 'merchant', text: "أهلاً بالبضائع! انتظر... أنت أخو سوهو الصغير! أين سوهو اليوم؟" },
+                { speaker: 'shinra', text: "سوهو متعب اليوم، لذا جئت أنا لأبيع البضائع للقرية!" },
+                { speaker: 'merchant', text: "ممتاز! كم سعر 1 كيلو من هذا القماش الفاخر؟" },
+                { speaker: 'shinra', text: "15 قطعة ذهبية!" },
+                { speaker: 'merchant', text: "هذا غالي جداً يا صغيري!" },
+                { speaker: 'shinra', text: "مستحيل! أخي يبيع بأرخص سعر في السوق. السعر الأصلي 20 قطعة! كما أننا أحضرنا جلود الدببة واللوتس النادرة!" },
+                { speaker: 'merchant', text: "ههههه! أنت تاجر ذكي ومقنع مثل أخيك! اتبعني وسآخذ كل البضائع بـ 30 قطعة ذهب!" },
+                { speaker: 'shinra', text: "رائع! حصلت على 30 قطعة ذهب! حل الليل... يجب أن أسرع بالعودة للبيت عبر الغابة." }
             ],
-            TRAGEDY: [
-                { speaker: "شينرا", role: "العمر 9", text: "مـ... ما هذا؟! البيت مدمر ومحترق بالكامل!!" },
-                { speaker: "شينرا", role: "العمر 9", text: "سوهو وماكي لا يتنفسان... وأبي في غيبوبة! امسك العربة بحرف [G] وانقلهم لمستشفى القرية!" }
+            BEAR_COOK: [
+                { speaker: 'shinra', text: "هذا الدب كان قوي للغاية! ولكني قطعت رأسه بالفأس. حان وقت شواء لحمه على النار!" },
+                { speaker: 'narrator', text: "*شينرا يشعل النار ويشوي لحم الدب اللذيذ ويستعيد كامل طاقته...*" },
+                { speaker: 'shinra', text: "ممم! طعمه أسطوري! ولكن الوقت تأخر... يجب أن أركض للبيت الآن!" }
+            ],
+            TRAGEDY_ARRIVE: [
+                { speaker: 'narrator', text: "وهنا تبدأ الفاجعة الكبرى في حياة شينرا..." },
+                { speaker: 'shinra', text: "مـ... ما هذا الذي أراه؟! المنزل مدمر ومحترق بالكامل!!" },
+                { speaker: 'shinra', text: "سوهو؟! ماكي؟! أبتي؟! أرجوكم ردوا علي!!" },
+                { speaker: 'shinra', text: "سوهو وماكي لا يتنفسان... وأبي في حالة غيبوبة خطيرة! يجب أن أحملهم على العربة فوراً وأركض بسرعة 40 كم/س للمستشفى!" }
             ],
             HOSPITAL: [
-                { speaker: "الطبيب يونو", role: "طبيب القرية", text: "يؤسفني جداً... سوهو وماكي قد فارقا الحياة، ووالدك دخل غيبوبة عميقة." },
-                { speaker: "شينرا", role: "العمر 9", text: "سـ... سوهو... ماكي... لاااااااااااااااا!!" }
+                { speaker: 'yuno', text: "أهلاً بك يا بني... أنا الطبيب يونو. يؤسفني جداً أن أخبرك بهذه الفاجعة." },
+                { speaker: 'yuno', text: "أخوك سوهو وأختك ماكي... قد فارقا الحياة فوراً. أما والدك يورا فهو على قيد الحياة ولكنه دخل في غيبوبة عميقة قد يستيقظ منها بعد 1 إلى 3 سنوات..." },
+                { speaker: 'shinra', text: "ماذا... سوهو وماكي... ماتوا؟!!" },
+                { speaker: 'narrator', text: "*شينرا يصرخ بصرخة حزن مأساوية تهز الأركان! وهالة سحرية سوداء مرعبة تتصاعد منه بغضب...*" }
             ]
         };
 
-        function startDialogueSequence(key, onComplete) {
-            currentDialogueList = DIALOGUES[key];
-            dialogueIndex = 0;
-            dialogueCallback = onComplete;
-            document.getElementById('dialogue-container').classList.remove('hidden');
-            renderDialogue();
+        let currentDialogList = [];
+        let currentDialogStep = 0;
+        let onDialogCompleteCallback = null;
+
+        function startDialogue(dialogKey, onComplete) {
+            currentDialogList = DIALOGUES[dialogKey];
+            currentDialogStep = 0;
+            onDialogCompleteCallback = onComplete;
+            document.getElementById('vn-overlay').classList.remove('hidden');
+            renderDialogStep();
         }
 
-        function renderDialogue() {
-            if (dialogueIndex >= currentDialogueList.length) {
-                document.getElementById('dialogue-container').classList.add('hidden');
-                if (dialogueCallback) dialogueCallback();
-                return;
-            }
-            const item = currentDialogueList[dialogueIndex];
-            document.getElementById('speaker-name').innerText = item.speaker;
-            document.getElementById('speaker-role').innerText = item.role;
-            document.getElementById('dialogue-text').innerText = item.text;
-        }
-
-        function nextDialogue() {
-            dialogueIndex++;
-            renderDialogue();
-        }
-
-        function toggleCartAttachment() {
-            const distToCart = playerMesh.position.distanceTo(cartMesh.position);
-            if (distToCart < 12) {
-                isCartAttached = !isCartAttached;
-                document.getElementById('cart-status-text').innerText = isCartAttached ? 
-                    "العربة متصلة وممسوكة! | اضغط [G] لترك العربة" : 
-                    "العربة مفصولة | اقترب واضغط [G] لإمساك العربة";
-            }
-        }
-
-        function triggerAction() {
-            if (!document.getElementById('dialogue-container').classList.contains('hidden')) {
-                nextDialogue();
+        function renderDialogStep() {
+            if (currentDialogStep >= currentDialogList.length) {
+                document.getElementById('vn-overlay').classList.add('hidden');
+                if (onDialogCompleteCallback) onDialogCompleteCallback();
                 return;
             }
 
-            // Mountain House Intro Interaction
-            if (currentStage === GameStage.INTRO_HOUSE && playerMesh.position.distanceTo(houseGroup.position) < 25) {
-                startDialogueSequence('INTRO', () => {
-                    currentStage = GameStage.DESCENT_TO_VILLAGE;
-                    document.getElementById('objective-text').innerText = "انزل عبر الطريق الجبلي نحو القرية التجارية الضخمة";
+            const item = currentDialogList[currentDialogStep];
+            const charData = CHARACTERS[item.speaker] || { name: item.speaker, info: "", color: "#ffffff" };
+
+            document.getElementById('vn-speaker-name').innerText = charData.name;
+            document.getElementById('vn-speaker-name').style.color = charData.color;
+            document.getElementById('vn-speaker-info').innerText = charData.info;
+            document.getElementById('vn-dialog-text').innerText = item.text;
+
+            document.getElementById('vn-avatar-sprite').innerHTML = generateAvatarSVG(item.speaker);
+            playTone(450, 0.04, 'triangle');
+        }
+
+        function advanceStory() {
+            currentDialogStep++;
+            renderDialogStep();
+        }
+
+        function generateAvatarSVG(speaker) {
+            switch(speaker) {
+                case 'shinra':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#0f172a"/><circle cx="50" cy="45" r="25" fill="#fca5a5"/><path d="M50 15 C 30 15, 25 35, 20 45 C 40 30, 60 30, 80 45 C 75 35, 70 15, 50 15 Z" fill="#334155"/><circle cx="40" cy="42" r="3.5" fill="#0284c7"/><circle cx="60" cy="42" r="3.5" fill="#0284c7"/></svg>`;
+                case 'soho':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#064e3b"/><circle cx="50" cy="40" r="28" fill="#fde047"/><path d="M50 10 C 25 10, 20 35, 15 45 C 40 25, 60 25, 85 45 Z" fill="#854d0e"/><circle cx="38" cy="38" r="4" fill="#15803d"/><circle cx="62" cy="38" r="4" fill="#15803d"/></svg>`;
+                case 'maki':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#450a0a"/><circle cx="50" cy="45" r="24" fill="#fca5a5"/><path d="M 20 20 L 80 20 L 85 80 L 15 80 Z" fill="#991b1b"/><circle cx="40" cy="42" r="3.5" fill="#dc2626"/></svg>`;
+                case 'yura':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#451a03"/><circle cx="50" cy="45" r="25" fill="#fef08a"/><path d="M25 45 C 25 75, 75 75, 75 45 Z" fill="#d1d5db"/><circle cx="40" cy="40" r="3" fill="#78350f"/><circle cx="60" cy="40" r="3" fill="#78350f"/></svg>`;
+                case 'merchant':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#78350f"/><circle cx="50" cy="45" r="25" fill="#fdba74"/><rect x="25" y="15" width="50" height="15" fill="#d97706"/></svg>`;
+                case 'yuno':
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#042f2e"/><circle cx="50" cy="45" r="25" fill="#fed7aa"/><rect x="20" y="15" width="60" height="20" fill="#0f766e"/></svg>`;
+                default:
+                    return `<svg viewBox="0 0 100 100" class="w-full h-full"><rect width="100" height="100" fill="#1e293b"/><circle cx="50" cy="50" r="25" fill="#64748b"/></svg>`;
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            initAudio();
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = true;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = true;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'Shift') keys.dash = true;
+            if (e.key === ' ' || e.key === 'e' || e.key === 'E') triggerInteraction();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') keys.up = false;
+            if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') keys.down = false;
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'Shift') keys.dash = false;
+        });
+
+        function setupTouchControls() {
+            const bindTouch = (id, keyName) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); keys[keyName] = true; });
+                el.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+            };
+            bindTouch('btn-up', 'up');
+            bindTouch('btn-down', 'down');
+            bindTouch('btn-left', 'left');
+            bindTouch('btn-right', 'right');
+            bindTouch('btn-dash', 'dash');
+
+            document.getElementById('btn-action').addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                initAudio();
+                triggerInteraction();
+            });
+        }
+
+        function triggerInteraction() {
+            if (!document.getElementById('vn-overlay').classList.contains('hidden')) {
+                advanceStory();
+                return;
+            }
+
+            if (gameState.step === SCENARIOS.MOUNTAIN_HOME_INTRO && Math.hypot(player.x - 240, player.y - 200) < 70) {
+                startDialogue('INTRO', () => {
+                    gameState.step = SCENARIOS.WALK_TO_MARKET_PATH;
+                    document.getElementById('objective-text').innerText = "انزل عبر الطريق نحو سوق القرية للتداول!";
                 });
             }
 
-            // Village Market Trading
-            if (currentStage === GameStage.DESCENT_TO_VILLAGE && playerMesh.position.distanceTo(villageGroup.position) < 40) {
-                currentStage = GameStage.VILLAGE_TRADE;
-                startDialogueSequence('VILLAGE', () => {
-                    goldCount = 30;
-                    document.getElementById('gold-text').innerText = `${goldCount} قطعة`;
-                    currentStage = GameStage.FOREST_RETURN;
-                    document.getElementById('objective-text').innerText = "اصعد الجبل راجعاً للبيت عبر الطريق المظلم";
-                });
+            if (gameState.step === SCENARIOS.LOADING_FAMILY_CART) {
+                if (!gameState.familyLoaded.yura && Math.hypot(player.x - 220, player.y - 240) < 55) {
+                    gameState.familyLoaded.yura = true;
+                    gameState.carriedCount++;
+                    playTone(650, 0.12);
+                } else if (!gameState.familyLoaded.soho && Math.hypot(player.x - 280, player.y - 280) < 55) {
+                    gameState.familyLoaded.soho = true;
+                    gameState.carriedCount++;
+                    playTone(650, 0.12);
+                } else if (!gameState.familyLoaded.maki && Math.hypot(player.x - 170, player.y - 300) < 55) {
+                    gameState.familyLoaded.maki = true;
+                    gameState.carriedCount++;
+                    playTone(650, 0.12);
+                }
+
+                if (gameState.carriedCount >= 3) {
+                    gameState.step = SCENARIOS.RUSH_TO_HOSPITAL_SPEED;
+                    document.getElementById('objective-text').innerText = "اركض بسرعة 40 كم/س للمستشفى! اضغط Shift للجري!";
+                }
             }
         }
 
         function startBearBattle() {
-            currentStage = GameStage.BEAR_BATTLE;
-            bearMesh.visible = true;
-            document.getElementById('boss-hud').classList.remove('hidden');
-            document.getElementById('objective-text').innerText = "اهزم الدب المفترس بالفأس!";
+            gameState.step = SCENARIOS.BEAR_BATTLE;
+            gameState.bearHP = 500;
+            document.getElementById('battle-overlay').classList.remove('hidden');
+            updateBattleUI();
         }
 
-        function attackBear() {
-            if (bearHP <= 0) return;
+        function updateBattleUI() {
+            document.getElementById('shinra-hp-text').innerText = `${gameState.shinraHP} / ${gameState.maxShinraHP} HP`;
+            document.getElementById('shinra-hp-bar').style.width = `${(gameState.shinraHP / gameState.maxShinraHP) * 100}%`;
 
-            const dmg = Math.floor(Math.random() * 35) + 40;
-            bearHP = Math.max(0, bearHP - dmg);
-            
-            document.getElementById('boss-hp-text').innerText = `${bearHP} / ${maxBearHP} HP`;
-            document.getElementById('boss-hp-bar').style.width = `${(bearHP / maxBearHP) * 100}%`;
+            document.getElementById('bear-hp-text').innerText = `${gameState.bearHP} / ${gameState.maxBearHP} HP`;
+            document.getElementById('bear-hp-bar').style.width = `${(gameState.bearHP / gameState.maxBearHP) * 100}%`;
+        }
 
-            if (bearHP <= 0) {
-                bearMesh.visible = false;
-                document.getElementById('boss-hud').classList.add('hidden');
-                currentStage = GameStage.RETURN_DESTROYED_HOME;
+        function appendBattleLog(msg, colorClass = "text-slate-300") {
+            const log = document.getElementById('battle-log');
+            log.innerHTML += `<p class="${colorClass} my-0.5">${msg}</p>`;
+            log.scrollTop = log.scrollHeight;
+        }
 
-                // Burn House Ruin
-                houseGroup.visible = false;
-                destroyedHouseGroup.visible = true;
+        function executeBattleAction(action) {
+            if (gameState.bearHP <= 0 || gameState.shinraHP <= 0) return;
 
-                document.getElementById('objective-text').innerText = "تفقد البيت المدمر في القمة واسحب العائلة بالعربة!";
+            if (action === 'attack') {
+                const dmg = Math.floor(Math.random() * 31) + 35;
+                gameState.bearHP = Math.max(0, gameState.bearHP - dmg);
+                
+                playTone(280, 0.15, 'sawtooth');
+                animateHit('battle-bear');
+                appendBattleLog(` يضرب شينرا بفأسه بقوة مسبباً <strong class="text-amber-400">${dmg} ضرر</strong>!`);
+                updateBattleUI();
+
+                if (gameState.bearHP <= 0) {
+                    appendBattleLog(` تم القضاء على الدب العملاق بنجاح!`, "text-emerald-400 font-bold");
+                    setTimeout(() => {
+                        document.getElementById('battle-overlay').classList.add('hidden');
+                        gameState.step = SCENARIOS.COOKING_BEAR_MEAT;
+                        startDialogue('BEAR_COOK', () => {
+                            gameState.shinraHP = gameState.maxShinraHP;
+                            gameState.step = SCENARIOS.RUSH_HOME_DESTROYED;
+                            document.getElementById('objective-text').innerText = "عد مسرعاً إلى بيت العائلة أعلى الجبل!";
+                        });
+                    }, 1200);
+                    return;
+                }
+
+                setTimeout(() => {
+                    const bearDmg = Math.floor(Math.random() * 35) + 40;
+                    gameState.shinraHP = Math.max(0, gameState.shinraHP - bearDmg);
+                    playTone(130, 0.2, 'square');
+                    animateHit('battle-shinra');
+                    appendBattleLog(` يهاجم الدب بمخالبه ويسبب لشينرا <strong class="text-red-400">${bearDmg} ضرر</strong>!`);
+                    updateBattleUI();
+                }, 500);
             }
         }
 
-        function updatePlayerLogic(delta) {
-            let speed = keys.Shift ? 28 : 15;
-            let moveVector = new THREE.Vector3();
+        function animateHit(id) {
+            const el = document.getElementById(id);
+            el.classList.add('shake');
+            setTimeout(() => el.classList.remove('shake'), 350);
+        }
 
-            if (keys.w || keys.ArrowUp) moveVector.z -= 1;
-            if (keys.s || keys.ArrowDown) moveVector.z += 1;
-            if (keys.a || keys.ArrowLeft) moveVector.x -= 1;
-            if (keys.d || keys.ArrowRight) moveVector.x += 1;
+        function drawMountainHomeScene(isDestroyed = false) {
+            gameState.currentLocation = isDestroyed ? "البيت المحترق (الفاجعة)" : "بيت العائلة (الجبل)";
 
-            if (moveVector.length() > 0) {
-                moveVector.normalize().multiplyScalar(speed * delta);
-                playerMesh.position.add(moveVector);
+            ctx.fillStyle = isDestroyed ? '#1c0a0a' : '#0f172a';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-                // Calculate Mountain Height Elevation for Player
-                const distToPeak = Math.hypot(playerMesh.position.x + 150, playerMesh.position.z + 150);
-                if (distToPeak < 140) {
-                    playerMesh.position.y = Math.cos(distToPeak / 140 * Math.PI) * 45 + 45;
-                } else {
-                    playerMesh.position.y = 0;
+            ctx.fillStyle = isDestroyed ? '#291d18' : '#334155';
+            ctx.beginPath();
+            ctx.moveTo(0, 260); ctx.lineTo(CANVAS_WIDTH, 360); ctx.lineTo(CANVAS_WIDTH, 540); ctx.lineTo(0, 540);
+            ctx.fill();
+
+            ctx.fillStyle = isDestroyed ? '#1c1310' : '#78350f';
+            ctx.beginPath();
+            ctx.moveTo(100, 540); ctx.lineTo(240, 260); ctx.lineTo(340, 260); ctx.lineTo(220, 540);
+            ctx.fill();
+
+            ctx.fillStyle = isDestroyed ? '#1c1917' : '#542d12';
+            ctx.fillRect(180, 140, 160, 120);
+
+            ctx.fillStyle = isDestroyed ? '#0c0a09' : '#991b1b';
+            ctx.beginPath();
+            ctx.moveTo(160, 140); ctx.lineTo(260, 70); ctx.lineTo(360, 140);
+            ctx.fill();
+
+            ctx.fillStyle = isDestroyed ? '#000000' : '#78350f';
+            ctx.fillRect(240, 200, 35, 60);
+
+            if (!isDestroyed) {
+                ctx.fillStyle = 'rgba(203, 213, 225, 0.3)';
+                ctx.beginPath(); ctx.arc(320, 50, 12, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(330, 35, 18, 0, Math.PI*2); ctx.fill();
+
+                ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(220, 240, 10, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#22c55e'; ctx.beginPath(); ctx.arc(280, 235, 12, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(170, 245, 9, 0, Math.PI*2); ctx.fill();
+
+                ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 12px Tajawal';
+                ctx.fillText("اضغط E للحديث مع العائلة", 200, 120);
+            } else {
+                ctx.fillStyle = '#ef4444';
+                ctx.fillRect(200, 180, 15, 25); ctx.fillRect(280, 160, 20, 30);
+
+                if (!gameState.familyLoaded.yura) {
+                    ctx.fillStyle = '#f59e0b'; ctx.fillRect(220, 240, 22, 10);
+                    ctx.fillStyle = '#fff'; ctx.font = '10px Tajawal'; ctx.fillText("يورا", 220, 235);
+                }
+                if (!gameState.familyLoaded.soho) {
+                    ctx.fillStyle = '#22c55e'; ctx.fillRect(280, 280, 26, 10);
+                    ctx.fillStyle = '#fff'; ctx.font = '10px Tajawal'; ctx.fillText("سوهو", 280, 275);
+                }
+                if (!gameState.familyLoaded.maki) {
+                    ctx.fillStyle = '#ef4444'; ctx.fillRect(170, 300, 20, 10);
+                    ctx.fillStyle = '#fff'; ctx.font = '10px Tajawal'; ctx.fillText("ماكي", 170, 295);
                 }
 
-                // If Cart is Attached, Drag Cart Behind Player
-                if (isCartAttached) {
-                    const targetCartPos = playerMesh.position.clone().sub(moveVector.clone().normalize().multiplyScalar(6));
-                    cartMesh.position.lerp(targetCartPos, 0.2);
-                    cartMesh.position.y = playerMesh.position.y;
-                }
+                ctx.fillStyle = '#b45309'; ctx.fillRect(360, 280, 50, 35);
+                ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 11px Tajawal';
+                ctx.fillText(`العربة (${gameState.carriedCount}/3)`, 355, 270);
+            }
+        }
+
+        function drawVillageMarketScene() {
+            gameState.currentLocation = "قرية التداول والأسواق";
+
+            ctx.fillStyle = '#14532d';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            ctx.fillStyle = '#a16207';
+            ctx.fillRect(0, 220, CANVAS_WIDTH, 120);
+
+            for(let i=60; i<CANVAS_WIDTH; i+=220) {
+                ctx.fillStyle = '#78350f';
+                ctx.fillRect(i, 100, 120, 90);
+                ctx.fillStyle = i % 400 === 0 ? '#dc2626' : '#0284c7';
+                ctx.beginPath();
+                ctx.moveTo(i-10, 100); ctx.lineTo(i+60, 50); ctx.lineTo(i+130, 100); ctx.fill();
+
+                ctx.fillStyle = '#fbbf24';
+                ctx.beginPath(); ctx.arc(i+60, 200, 11, 0, Math.PI*2); ctx.fill();
             }
 
-            // Camera Follows Player
-            camera.position.set(playerMesh.position.x, playerMesh.position.y + 22, playerMesh.position.z + 32);
-            camera.lookAt(playerMesh.position);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 14px Tajawal';
+            ctx.fillText("← البوابة للعودة للغابة", 40, 380);
+        }
 
-            // Trigger Bear Attack Encounter on Mountain Path Return
-            if (currentStage === GameStage.FOREST_RETURN && playerMesh.position.distanceTo(bearMesh.position) < 30) {
+        function drawDarkForestScene() {
+            gameState.currentLocation = "الغابة المظلمة ليلاً";
+
+            ctx.fillStyle = '#022c22';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            ctx.fillStyle = '#1c1917';
+            ctx.fillRect(0, 230, CANVAS_WIDTH, 100);
+
+            for(let i=20; i<CANVAS_WIDTH; i+=90) {
+                ctx.fillStyle = '#064e3b';
+                ctx.beginPath(); ctx.arc(i+30, 110, 45, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(i+30, 430, 45, 0, Math.PI*2); ctx.fill();
+
+                ctx.fillStyle = '#451a03';
+                ctx.fillRect(i+22, 140, 16, 50);
+                ctx.fillRect(i+22, 360, 16, 50);
+            }
+        }
+
+        function drawHospitalScene() {
+            gameState.currentLocation = "مستشفى قرية شينرا";
+
+            ctx.fillStyle = '#0f766e';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            ctx.fillStyle = '#134e4a';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, 140);
+
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(150, 200, 100, 60);
+            ctx.fillRect(350, 200, 100, 60);
+
+            ctx.fillStyle = '#14b8a6';
+            ctx.beginPath(); ctx.arc(500, 280, 14, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Tajawal'; ctx.fillText("الطبيب يونو", 475, 255);
+        }
+
+        function updatePlayerLogic() {
+            let moveSpeed = player.speed;
+            if (keys.dash) {
+                moveSpeed *= player.dashMultiplier;
+                gameState.isDashing = true;
+            } else {
+                gameState.isDashing = false;
+            }
+
+            let dx = 0, dy = 0;
+            if (keys.up) dy -= moveSpeed;
+            if (keys.down) dy += moveSpeed;
+            if (keys.left) dx -= moveSpeed;
+            if (keys.right) dx += moveSpeed;
+
+            if (dx !== 0 || dy !== 0) {
+                player.x += dx; player.y += dy;
+                player.isMoving = true;
+                player.x = Math.max(30, Math.min(CANVAS_WIDTH - 40, player.x));
+                player.y = Math.max(30, Math.min(CANVAS_HEIGHT - 40, player.y));
+            } else {
+                player.isMoving = false;
+            }
+
+            if (gameState.step === SCENARIOS.WALK_TO_MARKET_PATH && player.x > CANVAS_WIDTH - 60) {
+                player.x = 80;
+                gameState.step = SCENARIOS.VILLAGE_MARKET_TRADE;
+                startDialogue('TRADING', () => {
+                    gameState.gold = 30;
+                    document.getElementById('gold-amount').innerText = `${gameState.gold} قطعة ذهب`;
+                    gameState.step = SCENARIOS.FOREST_NIGHT_RETURN;
+                    document.getElementById('objective-text').innerText = "عد للبيت عبر الغابة المظلمة ليلاً!";
+                });
+            } else if (gameState.step === SCENARIOS.FOREST_NIGHT_RETURN && player.x > 450) {
                 startBearBattle();
-            }
-
-            // Trigger Tragedy Discovery at Ruined House
-            if (currentStage === GameStage.RETURN_DESTROYED_HOME && playerMesh.position.distanceTo(destroyedHouseGroup.position) < 25) {
-                currentStage = GameStage.TRAGEDY_DISCOVERY;
-                startDialogueSequence('TRAGEDY', () => {
-                    currentStage = GameStage.CART_RUSH_HOSPITAL;
-                    document.getElementById('objective-text').innerText = "امسك العربة [G] وانزل بها سريعاً لمستشفى القرية!";
+            } else if (gameState.step === SCENARIOS.RUSH_HOME_DESTROYED && player.x < 100) {
+                gameState.step = SCENARIOS.TRAGEDY_DISCOVERY;
+                startDialogue('TRAGEDY_ARRIVE', () => {
+                    gameState.step = SCENARIOS.LOADING_FAMILY_CART;
+                    document.getElementById('objective-text').innerText = "اقترب من جثث العائلة واضغط E لنقلهم للعربة!";
+                });
+            } else if (gameState.step === SCENARIOS.RUSH_TO_HOSPITAL_SPEED && player.x > CANVAS_WIDTH - 70) {
+                player.x = 100;
+                gameState.step = SCENARIOS.DOCTOR_HOSPITAL_SCENE;
+                startDialogue('HOSPITAL', () => {
+                    gameState.step = SCENARIOS.DARK_MAGIC_AWAKENING;
+                    document.getElementById('game-container').classList.add('shake', 'dark-aura-active');
                 });
             }
 
-            // Hospital Arrival Transition
-            if (currentStage === GameStage.CART_RUSH_HOSPITAL && playerMesh.position.distanceTo(hospitalGroup.position) < 30) {
-                currentStage = GameStage.HOSPITAL_DOCTOR;
-                startDialogueSequence('HOSPITAL', () => {
-                    currentStage = GameStage.DARK_MAGIC_END;
-                    document.getElementById('objective-text').innerText = "اكتمل الفصل الأول - استيقاظ القوة المظلمة لشينرا";
-                });
+            document.getElementById('current-location-text').innerText = gameState.currentLocation;
+        }
+
+        function renderScene() {
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+            if (gameState.step === SCENARIOS.TITLE_792) {
+                ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = '#ef4444'; ctx.font = 'bold 58px Cinzel'; ctx.textAlign = 'center';
+                ctx.fillText('792 AD', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10);
+                ctx.fillStyle = '#94a3b8'; ctx.font = '18px Tajawal';
+                ctx.fillText('عصر الفرسان، السحر، والفاجعة المأساوية', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 40);
+
+                gameState.titleTimer++;
+                if (gameState.titleTimer > 120) {
+                    gameState.step = SCENARIOS.MOUNTAIN_HOME_INTRO;
+                }
+                return;
+            }
+
+            if (gameState.step === SCENARIOS.DARK_MAGIC_AWAKENING) {
+                ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                ctx.fillStyle = '#dc2626'; ctx.font = 'bold 50px Cinzel'; ctx.textAlign = 'center';
+                ctx.fillText('THE END', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 20);
+                ctx.fillStyle = '#f59e0b'; ctx.font = '20px Tajawal';
+                ctx.fillText('اكتمل الفصل الأول • استيقاظ السحر الأسود لشينرا', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 35);
+                return;
+            }
+
+            switch(gameState.step) {
+                case SCENARIOS.MOUNTAIN_HOME_INTRO:
+                case SCENARIOS.WALK_TO_MARKET_PATH:
+                    drawMountainHomeScene(false);
+                    break;
+                case SCENARIOS.VILLAGE_MARKET_TRADE:
+                    drawVillageMarketScene();
+                    break;
+                case SCENARIOS.FOREST_NIGHT_RETURN:
+                case SCENARIOS.COOKING_BEAR_MEAT:
+                    drawDarkForestScene();
+                    break;
+                case SCENARIOS.RUSH_HOME_DESTROYED:
+                case SCENARIOS.TRAGEDY_DISCOVERY:
+                case SCENARIOS.LOADING_FAMILY_CART:
+                case SCENARIOS.RUSH_TO_HOSPITAL_SPEED:
+                    drawMountainHomeScene(true);
+                    break;
+                case SCENARIOS.DOCTOR_HOSPITAL_SCENE:
+                    drawHospitalScene();
+                    break;
+            }
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath(); ctx.arc(player.x, player.y, 14, 0, Math.PI * 2); ctx.fill();
+
+            ctx.fillStyle = '#334155';
+            ctx.beginPath(); ctx.arc(player.x, player.y - 4, 12, Math.PI, 0); ctx.fill();
+
+            if (gameState.isDashing) {
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
+                ctx.beginPath(); ctx.arc(player.x - 16, player.y, 11, 0, Math.PI * 2); ctx.fill();
+            }
+
+            if (gameState.carriedCount > 0 && gameState.step < SCENARIOS.DOCTOR_HOSPITAL_SCENE) {
+                ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 12px Tajawal';
+                ctx.fillText(`[عربة العائلة: ${gameState.carriedCount}/3]`, player.x - 30, player.y - 22);
             }
         }
 
-        function startGame() {
-            document.getElementById('full-screen-overlay').classList.add('opacity-0', 'pointer-events-none');
-            currentStage = GameStage.INTRO_HOUSE;
-        }
-
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const delta = clock.getDelta();
-
-            if (currentStage !== GameStage.TITLE && currentStage !== GameStage.DARK_MAGIC_END) {
-                updatePlayerLogic(delta);
-            }
-
-            renderer.render(scene, camera);
+        function gameLoop() {
+            updatePlayerLogic();
+            renderScene();
+            requestAnimationFrame(gameLoop);
         }
 
         window.onload = function() {
-            init3D();
-            animate();
+            setupTouchControls();
+            requestAnimationFrame(gameLoop);
         };
     </script>
 </body>
 </html>
+"""
+
+st.title("⚔️ Chronicles of Shinra - Chapter 1")
+st.write("لعبة RPG تفاعلية كاملة مدمجة داخل تطبيق Streamlit.")
+
+# Render game html inside streamlit iframe
+components.html(game_html, height=750, scrolling=False)
