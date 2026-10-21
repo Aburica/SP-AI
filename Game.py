@@ -1,535 +1,512 @@
 import streamlit as st
-import time
-import random
+import streamlit.components.v1 as components
 
-# ==========================================
-# PAGE CONFIGURATION & CUSTOM CSS (STYLING)
-# ==========================================
-st.set_page_config(
-    page_title="Chronicles of Shinra - Chapter 1",
-    page_icon="⚔️",
-    layout="centered"
-)
+st.set_page_config(page_title="Chronicles of Shinra - 3D Chapter 1", layout="wide")
 
-# Dark Fantasy Custom Styling with HTML Canvas & Animations
-st.markdown("""
-<style>
-    .stApp {
-        background-color: #0d0f12;
-        color: #e0e0e0;
-        font-family: 'Georgia', serif;
-    }
-    .story-box {
-        background-color: #161a22;
-        border: 2px solid #2e3646;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.7);
-    }
-    .dialogue-speaker {
-        color: #e5a93c;
-        font-weight: bold;
-        font-size: 1.1em;
-    }
-    .dialogue-text {
-        font-style: italic;
-        color: #d1d5db;
-    }
-    .status-bar {
-        background-color: #111827;
-        padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #374151;
-        margin-bottom: 15px;
-    }
-    .boss-header {
-        color: #ef4444;
-        text-align: center;
-        font-weight: bold;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-    }
-    .combat-log {
-        background-color: #050505;
-        border: 1px solid #1f2937;
-        padding: 10px;
-        height: 120px;
-        overflow-y: auto;
-        font-family: monospace;
-        color: #10b981;
-        border-radius: 4px;
-    }
-    div.stButton > button {
-        background-color: #1f2937;
-        color: #f3f4f6;
-        border: 1px solid #4b5563;
-        border-radius: 4px;
-        padding: 10px 20px;
-        transition: all 0.3s ease;
-        width: 100%;
-    }
-    div.stButton > button:hover {
-        background-color: #374151;
-        border-color: #9ca3af;
-        color: #ffffff;
-    }
-</style>
-""", unsafe_allow_html=True)
+html_code = """
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Chronicles of Shinra - 3D Chapter 1</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Arial', sans-serif; user-select: none; }
+        #canvas-container { width: 100vw; height: 100vh; display: block; }
+        
+        /* UI Overlay */
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            padding: 20px;
+        }
 
-# ==========================================
-# INITIALIZE STATE VARIABLES
-# ==========================================
-if "stage" not in st.session_state:
-    st.session_state.stage = "INTRO_YEAR"
+        .hud {
+            color: #fff;
+            font-size: 18px;
+            text-shadow: 2px 2px 4px #000;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 15px;
+            border-radius: 8px;
+            width: fit-content;
+        }
 
-# Movement & Quest Mechanics State
-if "pos_mountain" not in st.session_state:
-    st.session_state.pos_mountain = 0
-if "pos_return" not in st.session_state:
-    st.session_state.pos_return = 0
-if "carried_bodies" not in st.session_state:
-    st.session_state.carried_bodies = []
-if "pos_cart" not in st.session_state:
-    st.session_state.pos_cart = 0
+        .health-bar-container {
+            width: 250px; height: 20px; background: #444; border-radius: 10px; overflow: hidden; margin-top: 5px; border: 1px solid #777;
+        }
+        .health-bar-fill {
+            height: 100%; background: #22c55e; width: 100%; transition: width 0.2s;
+        }
+        .boss-health-fill {
+            height: 100%; background: #ef4444; width: 100%; transition: width 0.2s;
+        }
 
-# Combat State
-if "shinra_hp" not in st.session_state:
-    st.session_state.shinra_hp = 1500
-if "bear_hp" not in st.session_state:
-    st.session_state.bear_hp = 500
-if "combat_log" not in st.session_state:
-    st.session_state.combat_log = []
+        /* Dialogue Box */
+        #dialogue-box {
+            background: rgba(10, 10, 15, 0.85);
+            border: 2px solid #4a5568;
+            border-radius: 10px;
+            padding: 20px;
+            color: #fff;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            pointer-events: auto;
+            display: none;
+        }
+        #speaker-name { font-weight: bold; color: #f6ad55; font-size: 20px; margin-bottom: 8px; }
+        #dialogue-text { font-size: 16px; line-height: 1.5; color: #e2e8f0; }
+        #dialogue-btn {
+            margin-top: 15px; background: #3182ce; color: white; border: none; padding: 8px 16px;
+            border-radius: 5px; cursor: pointer; font-weight: bold; float: right;
+        }
+        #dialogue-btn:hover { background: #2b6cb0; }
 
-# Helper Navigation Function
-def set_stage(next_stage):
-    st.session_state.stage = next_stage
-    st.rerun()
+        /* Controls Prompt */
+        #controls-info {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(0,0,0,0.5); color: #aaa; padding: 10px; border-radius: 5px; font-size: 12px;
+        }
 
-# ==========================================
-# STAGE 0: INTRO YEAR (792 AD)
-# ==========================================
-if st.session_state.stage == "INTRO_YEAR":
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center; color: #9ca3af; font-size: 80px;'>792 A.D.</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #4b5563;'>The Era of Awakening and Sorrow</p>", unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    if st.button("Begin Story"):
-        set_stage("CUTSCENE_FAMILY")
+        /* Intro Screen */
+        #screen-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; color: #fff; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 100;
+            pointer-events: auto;
+        }
+        #screen-overlay h1 { font-size: 80px; margin: 0; color: #d1d5db; letter-spacing: 5px; }
+        #screen-overlay button {
+            margin-top: 30px; padding: 12px 30px; font-size: 20px; background: #dc2626; color: #fff;
+            border: none; border-radius: 5px; cursor: pointer; font-weight: bold;
+        }
+        #screen-overlay button:hover { background: #b91c1c; }
+    </style>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
 
-# ==========================================
-# STAGE 1: CUTSCENE - HOME & FAMILY
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_FAMILY":
-    st.title("Chapter 1: The Quiet Before The Storm")
-    
-    st.markdown("""
-    <div class='story-box'>
-        <p>High upon the mountain, shrouded in mist, stands a humble house. Near the house lies a solitary grave marked <b>'Koren'</b>—Shinra's late mother.</p>
-        <p>Inside, the father <b>Yura (Age 54, 178 cm)</b> lies bedridden, stricken by a sudden severe illness. His eyes are filled with deep sorrow. His daughter <b>Maki (Age 13, 154 cm)</b> tends to him tenderly.</p>
+    <div id="screen-overlay">
+        <h1 id="overlay-title">792 A.D.</h1>
+        <p id="overlay-sub">Chronicles of Shinra - Chapter 1</p>
+        <button id="start-btn" onclick="startGame()">START GAME</button>
     </div>
-    """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Yura:</span> <span class='dialogue-text'>"Maki..."</span></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Father! What happened? Hold on!"</span></p>
-        <p><span class='dialogue-speaker'>Yura:</span> <span class='dialogue-text'>"Bring me my medicine... quickly."</span></p>
-        <p><i>[Maki shows a flustered and anxious expression as she hands him the medicine bottle]</i></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Here, Father! Please take it!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("<i>The sound of wooden wheels echoing from outside... A cart arrives.</i>")
-    
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Soho (Age 17, 182 cm):</span> <span class='dialogue-text'>"Hello Maki! Father! I have returned!"</span></p>
-        <p><i>[Yura and Maki smile with relief at Soho's return]</i></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Welcome back, Soho! ...Wait, where is Shinra?"</span></p>
-        <p><span class='dialogue-speaker'>Shinra (Age 9, 142 cm):</span> <span class='dialogue-text'>"I'm right here!"</span></p>
-        <p><i>[A vein pops on Maki's forehead in anger. POW! She punches Shinra on the head!]</i></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Ouch! Why did you punch me?!"</span></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"I thought you were lost! And you were with Soho the whole time?!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("📜 Flashback: How Shinra Sneaked Out"):
-        st.markdown("""
-        <div class='story-box'>
-            <p><span class='dialogue-speaker'>Maki (Panicking):</span> <span class='dialogue-text'>"Shinra! Shinra! Where are you?!"</span></p>
-            <p><i>[Meanwhile, down the road, Soho is pulling the merchant cart...]</i></p>
-            <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Brother! Let me help you!"</span></p>
-            <p><span class='dialogue-speaker'>Soho:</span> <span class='dialogue-text'>"What?! You idiot, why are you here?"</span></p>
-            <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"I was curious about what you do when you go trading."</span></p>
-            <p><span class='dialogue-speaker'>Soho:</span> <span class='dialogue-text'>"I go to trade, sell goods, and make money for Father's medicine."</span></p>
-            <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Alright then! I will help you!"</span></p>
-            <p><span class='dialogue-speaker'>Soho (Sighs):</span> <span class='dialogue-text'>"Fine... No turning back now."</span></p>
+    <div id="ui-layer">
+        <div class="hud" id="hud-stats" style="display:none;">
+            <div><b>Shinra</b> (Age 9 | 142cm)</div>
+            <div>HP: <span id="player-hp-num">1500</span> / 1500</div>
+            <div class="health-bar-container"><div id="player-hp-bar" class="health-bar-fill"></div></div>
+            <div id="boss-hud" style="display:none; margin-top: 10px;">
+                <div style="color:#ef4444;"><b>Giant Red-Eyed Bear</b></div>
+                <div class="health-bar-container"><div id="boss-hp-bar" class="boss-health-fill"></div></div>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Anyway, I was curious and I even managed to sell the Lotus Flowers!"</span></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Oh? How much did you make from them?"</span></p>
-        <p><span class='dialogue-speaker'>Shinra (Innocently):</span> <span class='dialogue-text'>"30 Gold Coins!"</span></p>
-        <p><i>[Yura smiles faintly at his young son's achievement.]</i></p>
-    </div>
-    """, unsafe_allow_html=True)
+        <div id="controls-info">
+            <b>Controls:</b> W, A, S, D = Move | Shift = Dash (40km/h) | Space = Attack / Interact | E = Pick Up Body
+        </div>
 
-    st.markdown("---")
-    st.markdown("<b>One Week Later...</b>")
-
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Soho (Exhausted):</span> <span class='dialogue-text'>"Enough... I am completely exhausted. I need rest."</span></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Then who is going to trade in the village, you fool?"</span></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"I will go! I learned arithmetic and how to persuade customers!"</span></p>
-        <p><span class='dialogue-speaker'>Maki:</span> <span class='dialogue-text'>"Alright. Take this Woodcutter's Axe with you for safety."</span></p>
-    </div>
-    """, unsafe_allow_html=True)
-
-    if st.button("Proceed to Mountain Path"):
-        set_stage("GAMEPLAY_DESCENT")
-
-# ==========================================
-# STAGE 2: GAMEPLAY - DESCENT FROM MOUNTAIN
-# ==========================================
-elif st.session_state.stage == "GAMEPLAY_DESCENT":
-    st.title("Descent to the Village")
-    st.caption("Target Distance: 1300 meters through the forest.")
-
-    st.markdown(f"""
-    <div class='status-bar'>
-        🎒 <b>Inventory:</b> Merchant Pack, Trade Goods, Woodcutter's Axe [Rank: Unknown]<br>
-        📍 <b>Distance Travelled:</b> {st.session_state.pos_mountain} / 1300 meters
-    </div>
-    """, unsafe_allow_html=True)
-
-    # HTML Canvas graphic for visualization
-    progress_pct = int((st.session_state.pos_mountain / 1300) * 100)
-    st.markdown(f"""
-    <div style="background-color: #1f2937; border-radius: 10px; padding: 5px; border: 1px solid #4b5563;">
-        <div style="background-color: #3b82f6; width: {progress_pct}%; height: 20px; border-radius: 8px; text-align: center; line-height: 20px; font-size: 12px; font-weight: bold; color: white;">
-            {progress_pct}%
+        <div id="dialogue-box">
+            <div id="speaker-name">Speaker</div>
+            <div id="dialogue-text">Dialogue Text Goes Here...</div>
+            <button id="dialogue-btn" onclick="nextDialogue()">Next ►</button>
         </div>
     </div>
-    """, unsafe_allow_html=True)
 
-    st.write("")
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Walk Down Mountain (+150m)"):
-            st.session_state.pos_mountain += 150
-            if st.session_state.pos_mountain >= 1300:
-                st.session_state.pos_mountain = 1300
-                set_stage("CUTSCENE_VILLAGE_MARKET")
-            else:
-                st.rerun()
+    <div id="canvas-container"></div>
 
-    with col2:
-        if st.button("Dash Down Mountain (+350m)"):
-            st.session_state.pos_mountain += 350
-            if st.session_state.pos_mountain >= 1300:
-                st.session_state.pos_mountain = 1300
-                set_stage("CUTSCENE_VILLAGE_MARKET")
-            else:
-                st.rerun()
+    <script>
+        // Game Engine Variables
+        let scene, camera, renderer;
+        let player, playerAxe, bear, cart, house, hospital;
+        let family = [];
+        let keys = {};
+        
+        // Game State
+        let currentStage = "INTRO"; // INTRO, HOME_CUTSCENE, MOUNTAIN_DESCENT, MARKET_CUTSCENE, BEAR_FIGHT, POST_BEAR, RETURN_HOME, TRAGEDY_CUTSCENE, CARRY_FAMILY, SPRINT_HOSPITAL, ENDING
+        let playerHP = 1500;
+        let bearHP = 500;
+        let dialogueIndex = 0;
+        let currentDialogues = [];
+        let carriedCount = 0;
 
-# ==========================================
-# STAGE 3: CUTSCENE - VILLAGE MARKET TRADING
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_VILLAGE_MARKET":
-    st.title("Village Market - Trading")
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0d12);
+            scene.fog = new THREE.FogExp2(0x0a0d12, 0.015);
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Villager:</span> <span class='dialogue-text'>"Look, the goods are here! Wait, you are Soho's younger brother. Where is Soho?"</span></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"He is exhausted today, so I am taking over the sales!"</span></p>
-        <p><span class='dialogue-speaker'>Villager:</span> <span class='dialogue-text'>"I see. How much for 1kg of this fabric?"</span></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"15 Gold Coins!"</span></p>
-        <p><span class='dialogue-speaker'>Arrogant Customer:</span> <span class='dialogue-text'>"That's way too expensive!"</span></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"No way! My brother sells cheaper than anyone in the market. Original price is 20 gold coins. Do you want it or should I raise the price? Besides, this is genuine Bear-Skin Fabric that we gathered ourselves!"</span></p>
-        <p><span class='dialogue-speaker'>Arrogant Customer:</span> <span class='dialogue-text'>"Tch... fine! I'll buy it!" <i>(The trick worked!)</i></span></p>
-        <hr>
-        <p><span class='dialogue-speaker'>Other Customers:</span> <span class='dialogue-text'>"Give me potatoes!" "I want charcoal!" "Lotus flowers here!" "I'll take lettuce!"</span></p>
-        <p><span class='dialogue-speaker'>Shinra (Sweating):</span> <span class='dialogue-text'>"Looks like I won't be returning home early today..."</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><i>Night falls... All goods are completely sold out.</i></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"What a tiring day... Time to head back home. It's dark, but good thing I brought my axe."</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
 
-    if st.button("Head Back Home Into The Night Forest"):
-        set_stage("CUTSCENE_BEAR_ENCOUNTER")
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(20, 40, 20);
+            dirLight.castShadow = true;
+            scene.add(dirLight);
 
-# ==========================================
-# STAGE 4: ENCOUNTER - THE RED-EYED BEAR
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_BEAR_ENCOUNTER":
-    st.title("Night Forest Encounter")
+            // Environment: Ground
+            const groundGeo = new THREE.PlaneGeometry(300, 300);
+            const groundMat = new THREE.MeshLambertMaterial({ color: 0x1c2518 });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
 
-    st.markdown("""
-    <div class='story-box' style='border-color: #ef4444;'>
-        <p><i>As Shinra walks up the mountain path, glowing red eyes emerge from the thick darkness of the forest... A massive, wild bear appears!</i></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"My God... Bears are wandering around our forest near home? Maybe Maki didn't secure the trap properly... Fine, I will fight you!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            // Create Characters & Objects
+            createPlayer();
+            createHouseAndFamily();
+            createBear();
+            createCart();
+            createTrees();
 
-    if st.button("Draw Woodcutter's Axe & Fight!"):
-        set_stage("GAMEPLAY_BOSS_FIGHT")
+            // Camera Setup
+            camera.position.set(0, 5, 10);
+            
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+            window.addEventListener('keydown', e => keys[e.code] = true);
+            window.addEventListener('keyup', e => keys[e.code] = false);
 
-# ==========================================
-# STAGE 5: GAMEPLAY - BOSS FIGHT (GIANT BEAR)
-# ==========================================
-elif st.session_state.stage == "GAMEPLAY_BOSS_FIGHT":
-    st.markdown("<h2 class='boss-header'>⚠️ BOSS BATTLE: GIANT RED-EYED BEAR ⚠️</h2>", unsafe_allow_html=True)
+            animate();
+        }
 
-    col_s, col_b = st.columns(2)
-    with col_s:
-        st.markdown(f"### 🧑 Shinra\n**HP:** {st.session_state.shinra_hp} / 1500")
-        st.progress(max(0, st.session_state.shinra_hp) / 1500)
-    with col_b:
-        st.markdown(f"### 🐻 Giant Bear\n**HP:** {st.session_state.bear_hp} / 500")
-        st.progress(max(0, st.session_state.bear_hp) / 500)
+        function createPlayer() {
+            // Shinra Player Mesh (Stylized 142cm representation)
+            player = new THREE.Group();
+            
+            const bodyGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.4);
+            const bodyMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.7;
+            player.add(body);
 
-    st.markdown("#### Combat Log")
-    log_html = "<br>".join(st.session_state.combat_log[-4:])
-    st.markdown(f"<div class='combat-log'>{log_html if log_html else 'Battle starting...'}</div>", unsafe_allow_html=True)
+            const headGeo = new THREE.SphereGeometry(0.25);
+            const headMat = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.y = 1.5;
+            player.add(head);
 
-    st.write("")
-    
-    if st.session_state.shinra_hp > 0 and st.session_state.bear_hp > 0:
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🪓 Axe Slash (30-60 DMG)"):
-                # Player attack
-                dmg = random.randint(30, 60)
-                st.session_state.bear_hp -= dmg
-                st.session_state.combat_log.append(f"> Shinra slashes with Axe for {dmg} DMG!")
+            // Axe (Unknown Rank)
+            playerAxe = new THREE.Group();
+            const handleGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.8);
+            const handleMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+            const handle = new THREE.Mesh(handleGeo, handleMat);
+            
+            const bladeGeo = new THREE.BoxGeometry(0.3, 0.2, 0.05);
+            const bladeMat = new THREE.MeshLambertMaterial({ color: 0x9ca3af });
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.position.set(0.1, 0.3, 0);
 
-                # Boss turn if alive
-                if st.session_state.bear_hp > 0:
-                    # 70% normal attack, 30% heavy attack
-                    if random.random() < 0.7:
-                        b_dmg = random.randint(50, 70)
-                        st.session_state.combat_log.append(f"> Giant Bear claws Shinra for {b_dmg} DMG!")
-                    else:
-                        b_dmg = random.randint(90, 140)
-                        st.session_state.combat_log.append(f"> 💥 GIANT BEAR SWIPE! Shinra takes {b_dmg} DMG!")
-                    st.session_state.shinra_hp -= b_dmg
+            playerAxe.add(handle);
+            playerAxe.add(blade);
+            playerAxe.position.set(0.4, 0.8, 0.2);
+            player.add(playerAxe);
 
-                st.rerun()
+            player.position.set(0, 0, 0);
+            scene.add(player);
+        }
 
-        with c2:
-            if st.button("🛡️ Dodge & Quick Counter (20-40 DMG)"):
-                dmg = random.randint(20, 40)
-                st.session_state.bear_hp -= dmg
-                b_dmg = random.randint(20, 40) # Reduced damage taken
-                st.session_state.shinra_hp -= b_dmg
-                st.session_state.combat_log.append(f"> Shinra swiftly dodged and hit for {dmg} DMG, taking only {b_dmg} DMG!")
-                st.rerun()
+        function createHouseAndFamily() {
+            // Mountain House
+            house = new THREE.Group();
+            const wallMat = new THREE.MeshLambertMaterial({ color: 0x451a03 });
+            const walls = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 6), wallMat);
+            walls.position.y = 2;
+            
+            const roofMat = new THREE.MeshLambertMaterial({ color: 0x27272a });
+            const roof = new THREE.Mesh(new THREE.ConeGeometry(5, 2, 4), roofMat);
+            roof.position.y = 5;
+            roof.rotation.y = Math.PI / 4;
 
-    elif st.session_state.shinra_hp <= 0:
-        st.error("💀 You were defeated by the Giant Bear...")
-        if st.button("🔄 Retry Battle"):
-            st.session_state.shinra_hp = 1500
-            st.session_state.bear_hp = 500
-            st.session_state.combat_log = []
-            st.rerun()
+            house.add(walls);
+            house.add(roof);
+            house.position.set(0, 0, -15);
+            scene.add(house);
 
-    elif st.session_state.bear_hp <= 0:
-        st.success("🎉 Victory! The Giant Bear has been slain!")
-        if st.button("Continue Story"):
-            set_stage("CUTSCENE_POST_BEAR")
+            // Family Members (Yura, Soho, Maki, Koren's Grave)
+            const graveGeo = new THREE.BoxGeometry(0.5, 1, 0.2);
+            const graveMat = new THREE.MeshLambertMaterial({ color: 0x6b7280 });
+            const grave = new THREE.Mesh(graveGeo, graveMat);
+            grave.position.set(-6, 0.5, -15);
+            scene.add(grave);
 
-# ==========================================
-# STAGE 6: CUTSCENE - AFTER THE FIGHT
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_POST_BEAR":
-    st.title("After the Battle")
+            // Family Meshes inside/near house
+            const createMember = (color, height, x, z, name) => {
+                const m = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, height), new THREE.MeshLambertMaterial({ color: color }));
+                m.position.set(x, height/2, z);
+                m.userData = { name: name, isCarried: false };
+                scene.add(m);
+                return m;
+            };
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><i>Shinra, wounded with a fresh scratch on his cheek, stands over the defeated beast. With a powerful final strike, he severs the bear's head.</i></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Man, this specific bear was tough! I'm going to cook it and eat its meat."</span></p>
-        <p><i>[Phew...] Shinra starts a fire and roasts the meat over glowing embers.</i></p>
-        <p><span class='dialogue-speaker'>Shinra:</span> <span class='dialogue-text'>"Mmm, delicious meat! ...Wait, I almost forgot! I need to return home as fast as possible!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            family.push(createMember(0xef4444, 1.78, -2, -13, "Father Yura"));
+            family.push(createMember(0x10b981, 1.82, 2, -13, "Soho"));
+            family.push(createMember(0xec4899, 1.54, 3, -14, "Maki"));
+        }
 
-    if st.button("Run Home Quickly"):
-        set_stage("GAMEPLAY_RUN_HOME")
+        function createBear() {
+            bear = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 3), new THREE.MeshLambertMaterial({ color: 0x1f1917 }));
+            body.position.y = 1;
+            
+            // Glowing Red Eyes
+            const eyeGeo = new THREE.SphereGeometry(0.1);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+            const eye2 = new THREE.Mesh(eyeGeo, eyeMat);
+            eye1.position.set(-0.4, 1.5, 1.5);
+            eye2.position.set(0.4, 1.5, 1.5);
 
-# ==========================================
-# STAGE 7: GAMEPLAY - RUSH BACK HOME
-# ==========================================
-elif st.session_state.stage == "GAMEPLAY_RUN_HOME":
-    st.title("Rushing Back Home")
-    
-    st.markdown(f"""
-    <div class='status-bar'>
-        🏃 <b>Shinra's Movement</b><br>
-        📍 <b>Distance to Home:</b> {st.session_state.pos_return} / 1000 meters
-    </div>
-    """, unsafe_allow_html=True)
+            bear.add(body);
+            bear.add(eye1);
+            bear.add(eye2);
+            bear.position.set(0, 0, -60);
+            scene.add(bear);
+        }
 
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Run (+200m)"):
-            st.session_state.pos_return += 200
-            if st.session_state.pos_return >= 1000:
-                set_stage("CUTSCENE_TRAGEDY")
-            else:
-                st.rerun()
-    with c2:
-        if st.button("⚡ DASH (40 km/h) (+400m)"):
-            st.session_state.pos_return += 400
-            if st.session_state.pos_return >= 1000:
-                set_stage("CUTSCENE_TRAGEDY")
-            else:
-                st.rerun()
+        function createCart() {
+            cart = new THREE.Group();
+            const boxMat = new THREE.MeshLambertMaterial({ color: 0x78350f });
+            const box = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 3), boxMat);
+            box.position.y = 0.8;
+            cart.add(box);
+            cart.position.set(5, 0, -10);
+            scene.add(cart);
+        }
 
-# ==========================================
-# STAGE 8: CUTSCENE - THE TRAGEDY
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_TRAGEDY":
-    st.title("The Tragedy")
+        function createTrees() {
+            const treeMat = new THREE.MeshLambertMaterial({ color: 0x064e3b });
+            const trunkMat = new THREE.MeshLambertMaterial({ color: 0x451a03 });
 
-    st.markdown("""
-    <div class='story-box' style='border-color: #7f1d1d; background-color: #1a0505;'>
-        <h3 style='color: #ef4444; text-align: center;'>[ Narrator ]</h3>
-        <p style='text-align: center; font-size: 1.2em; color: #f87171;'><i>"And here... begins the true tragedy for Shinra."</i></p>
-        <hr style='border-color: #7f1d1d;'>
-        <p>Shinra reaches the top of the mountain. The house is completely destroyed and shattered. His father Yura lies unconscious on the floor. Soho and Maki are lying motionless in pools of blood... all lifeless.</p>
-        <p><span class='dialogue-speaker'>Shinra (Tears streaming, in utter shock):</span> <span class='dialogue-text'>"AAAAAAAH! WHAT IS THIS?! Soho! Maki! Father! Is anyone alive?! I must take you to the hospital right now!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            for(let i = 0; i < 60; i++) {
+                const tree = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 2), trunkMat);
+                trunk.position.y = 1;
+                const leaves = new THREE.Mesh(new THREE.ConeGeometry(2, 6, 5), treeMat);
+                leaves.position.y = 4;
+                tree.add(trunk);
+                tree.add(leaves);
 
-    if st.button("Load Family into the Cart"):
-        set_stage("GAMEPLAY_CARRY_FAMILY")
+                let x = (Math.random() - 0.5) * 200;
+                let z = (Math.random() - 0.5) * 200;
+                if(Math.abs(x) < 8 && Math.abs(z) < 80) continue; // Keep path clear
+                tree.position.set(x, 0, z);
+                scene.add(tree);
+            }
+        }
 
-# ==========================================
-# STAGE 9: GAMEPLAY - CARRY FAMILY TO CART
-# ==========================================
-elif st.session_state.stage == "GAMEPLAY_CARRY_FAMILY":
-    st.title("Rescue Operation")
-    st.subheader("Carry your family members one by one to the merchant cart!")
+        function startGame() {
+            document.getElementById('screen-overlay').style.display = 'none';
+            document.getElementById('hud-stats').style.display = 'block';
+            startCutscene("HOME_CUTSCENE");
+        }
 
-    st.markdown(f"""
-    <div class='status-bar'>
-        🛒 <b>Cart Contents:</b> {', '.join(st.session_state.carried_bodies) if st.session_state.carried_bodies else 'Empty'}
-    </div>
-    """, unsafe_allow_html=True)
+        // Dialogue System
+        function startCutscene(stage) {
+            currentStage = stage;
+            dialogueIndex = 0;
 
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        if "Soho" not in st.session_state.carried_bodies:
-            if st.button("Carry Soho"):
-                st.session_state.carried_bodies.append("Soho")
-                st.rerun()
-        else:
-            st.write("✅ Soho in cart")
+            if (stage === "HOME_CUTSCENE") {
+                currentDialogues = [
+                    { speaker: "Yura", text: "Maki... bring me my medicine... quickly." },
+                    { speaker: "Maki", text: "Here Father! Please take it!" },
+                    { speaker: "Soho", text: "Hello Maki! Father! I have returned with the cart!" },
+                    { speaker: "Maki", text: "Welcome back Soho! ...Wait, where is Shinra?" },
+                    { speaker: "Shinra", text: "I'm right here!" },
+                    { speaker: "Maki", text: "*PUNCHES SHINRA* I thought you were lost!" },
+                    { speaker: "Shinra", text: "Ouch! I helped Soho sell Lotus Flowers for 30 Gold Coins!" },
+                    { speaker: "Soho", text: "A week later... I am completely exhausted. I need rest." },
+                    { speaker: "Shinra", text: "I will go sell the goods in the village! I learned arithmetic!" },
+                    { speaker: "Maki", text: "Alright, take this Woodcutter's Axe with you for safety." }
+                ];
+            } else if (stage === "MARKET_CUTSCENE") {
+                currentDialogues = [
+                    { speaker: "Villager", text: "Look, goods are here! Are you Soho's brother?" },
+                    { speaker: "Shinra", text: "Yes! Selling Bear-Skin Fabric for 15 Gold Coins!" },
+                    { speaker: "Arrogant Customer", text: "Too expensive! ...Fine, I'll buy it!" },
+                    { speaker: "Shinra", text: "Phew, sold out everything! It's dark now. Time to walk back home." }
+                ];
+            } else if (stage === "POST_BEAR") {
+                currentDialogues = [
+                    { speaker: "Shinra", text: "Phew! This bear was tough... I sliced off its head and roasted the meat. Delicious!" },
+                    { speaker: "Shinra", text: "Wait! I need to rush back home right now!" }
+                ];
+            } else if (stage === "TRAGEDY_CUTSCENE") {
+                currentDialogues = [
+                    { speaker: "Narrator", text: "And here... begins the tragedy for Shinra." },
+                    { speaker: "Shinra", text: "NOOO! The house is destroyed! Father is unconscious! Soho and Maki are dead?!" },
+                    { speaker: "Shinra", text: "I must load them onto the cart and run to the hospital! [Press E near family members to pick them up]" }
+                ];
+            } else if (stage === "ENDING") {
+                currentDialogues = [
+                    { speaker: "Doctor Yuno", text: "Young boy... I am Dr. Yuno. Your brother Soho and sister Maki have passed away." },
+                    { speaker: "Doctor Yuno", text: "Your father Yura is alive, but in a deep coma for 1-3 years..." },
+                    { speaker: "Shinra", text: "SOHO... MAKI... ARE DEAD?! HAAAAAAAAAAAAAAA...!!!!!" },
+                    { speaker: "Narrator", text: "A terrifying dark aura erupts from Shinra, shaking the hospital grounds..." }
+                ];
+            }
 
-    with c2:
-        if "Maki" not in st.session_state.carried_bodies:
-            if st.button("Carry Maki"):
-                st.session_state.carried_bodies.append("Maki")
-                st.rerun()
-        else:
-            st.write("✅ Maki in cart")
+            showDialogue();
+        }
 
-    with c3:
-        if "Father (Yura)" not in st.session_state.carried_bodies:
-            if st.button("Carry Father Yura"):
-                st.session_state.carried_bodies.append("Father (Yura)")
-                st.rerun()
-        else:
-            st.write("✅ Father in cart")
+        function showDialogue() {
+            if (dialogueIndex < currentDialogues.length) {
+                const d = currentDialogues[dialogueIndex];
+                document.getElementById('speaker-name').innerText = d.speaker;
+                document.getElementById('dialogue-text').innerText = d.text;
+                document.getElementById('dialogue-box').style.display = 'block';
+            } else {
+                document.getElementById('dialogue-box').style.display = 'none';
+                endCutsceneStage();
+            }
+        }
 
-    if len(st.session_state.carried_bodies) == 3:
-        st.markdown("---")
-        st.success("All family members loaded! Sprint to the village hospital!")
-        if st.button("Sprint to Village (40 km/h)"):
-            set_stage("GAMEPLAY_CART_SPRINT")
+        function nextDialogue() {
+            dialogueIndex++;
+            showDialogue();
+        }
 
-# ==========================================
-# STAGE 10: GAMEPLAY - DASH CART TO VILLAGE
-# ==========================================
-elif st.session_state.stage == "GAMEPLAY_CART_SPRINT":
-    st.title("Desperate Sprint to Village")
+        function endCutsceneStage() {
+            if (currentStage === "HOME_CUTSCENE") {
+                currentStage = "MOUNTAIN_DESCENT";
+            } else if (currentStage === "MARKET_CUTSCENE") {
+                currentStage = "BEAR_FIGHT";
+                document.getElementById('boss-hud').style.display = 'block';
+            } else if (currentStage === "POST_BEAR") {
+                currentStage = "RETURN_HOME";
+            } else if (currentStage === "TRAGEDY_CUTSCENE") {
+                currentStage = "CARRY_FAMILY";
+            } else if (currentStage === "ENDING") {
+                document.getElementById('screen-overlay').style.display = 'flex';
+                document.getElementById('overlay-title').innerText = "THE END";
+                document.getElementById('overlay-title').style.color = "#ef4444";
+                document.getElementById('overlay-sub').innerText = "To Be Continued in Chapter 2...";
+                document.getElementById('start-btn').innerText = "RESTART CHAPTER 1";
+                document.getElementById('start-btn').onclick = () => location.reload();
+            }
+        }
 
-    st.markdown(f"""
-    <div class='status-bar'>
-        ⚡ <b>Speed:</b> 40 km/h<br>
-        📍 <b>Distance to Hospital:</b> {st.session_state.pos_cart} / 1200 meters
-    </div>
-    """, unsafe_allow_html=True)
+        // Gameplay Loop Mechanics
+        function updatePlayerMovement() {
+            let speed = (keys['ShiftLeft'] || keys['ShiftRight']) ? 0.3 : 0.12; // Dash speed option
+            
+            if (currentStage === "MOUNTAIN_DESCENT" || currentStage === "RETURN_HOME" || currentStage === "CARRY_FAMILY" || currentStage === "SPRINT_HOSPITAL" || currentStage === "BEAR_FIGHT") {
+                if (keys['KeyW']) player.position.z -= speed;
+                if (keys['KeyS']) player.position.z += speed;
+                if (keys['KeyA']) player.position.x -= speed;
+                if (keys['KeyD']) player.position.x += speed;
 
-    if st.button("⚡ MAXIMUM DASH (+400m)"):
-        st.session_state.pos_cart += 400
-        if st.session_state.pos_cart >= 1200:
-            set_stage("CUTSCENE_HOSPITAL_ARRIVAL")
-        else:
-            st.rerun()
+                // Stage Trigger Progression Checks
+                if (currentStage === "MOUNTAIN_DESCENT" && player.position.z < -40) {
+                    startCutscene("MARKET_CUTSCENE");
+                }
+                if (currentStage === "RETURN_HOME" && player.position.z > -10) {
+                    startCutscene("TRAGEDY_CUTSCENE");
+                }
+                if (currentStage === "SPRINT_HOSPITAL" && player.position.z < -100) {
+                    startCutscene("ENDING");
+                }
+            }
 
-# ==========================================
-# STAGE 11: CUTSCENE - HOSPITAL ARRIVAL
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_HOSPITAL_ARRIVAL":
-    st.title("Arrival at Village Hospital")
+            // Attack & Interact Logic
+            if (keys['Space']) {
+                playerAxe.rotation.x = Math.PI / 2; // Axe Swing Animation
+                if (currentStage === "BEAR_FIGHT") {
+                    let dist = player.position.distanceTo(bear.position);
+                    if (dist < 4) {
+                        let dmg = Math.floor(Math.random() * 30) + 30; // 30-60 DMG
+                        bearHP = Math.max(0, bearHP - dmg);
+                        document.getElementById('boss-hp-bar').style.width = (bearHP / 500 * 100) + '%';
+                        
+                        if (bearHP <= 0) {
+                            scene.remove(bear);
+                            document.getElementById('boss-hud').style.display = 'none';
+                            startCutscene("POST_BEAR");
+                        }
+                    }
+                }
+            } else {
+                playerAxe.rotation.x = 0;
+            }
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><i>Shinra's face is completely cold and emotionless as he pulls the heavy cart at a terrifying speed of 40 km/h, shocking and pushing past terrified villagers!</i></p>
-        <p><span class='dialogue-speaker'>Shinra (Scream echoing across town):</span> <span class='dialogue-text'>"IS THERE A DOCTOR HERE?! MY BROTHER, SISTER, AND FATHER ARE CRITICALLY INJURED!!"</span></p>
-        <p><i>Villagers stand terrified. A doctor rushes out from the clinic...</i></p>
-        <p><span class='dialogue-speaker'>Doctor Yuno (Age 34, 180 cm):</span> <span class='dialogue-text'>"Quickly! Bring them inside for emergency treatment now!"</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+            // Carry Family Action
+            if (currentStage === "CARRY_FAMILY" && keys['KeyE']) {
+                family.forEach(m => {
+                    if (!m.userData.isCarried && player.position.distanceTo(m.position) < 3) {
+                        m.userData.isCarried = true;
+                        m.position.set(0, 1 + carriedCount * 0.4, 0);
+                        cart.add(m);
+                        carriedCount++;
+                        if (carriedCount >= 3) {
+                            currentStage = "SPRINT_HOSPITAL";
+                        }
+                    }
+                });
+            }
 
-    if st.button("Wait for Doctor's Diagnosis"):
-        set_stage("CUTSCENE_ENDING")
+            // Camera follow player
+            camera.position.set(player.position.x, player.position.y + 6, player.position.z + 12);
+            camera.lookAt(player.position);
+        }
 
-# ==========================================
-# STAGE 12: CUTSCENE - THE TRAGIC ENDING & AWAKENING
-# ==========================================
-elif st.session_state.stage == "CUTSCENE_ENDING":
-    st.title("Hospital Room")
+        // Bear AI Fight Attack Logic
+        let lastBearAttack = Date.now();
+        function updateBearAI() {
+            if (currentStage === "BEAR_FIGHT" && bearHP > 0) {
+                bear.lookAt(player.position);
+                let dist = bear.position.distanceTo(player.position);
+                if (dist > 2) {
+                    bear.translateZ(0.04);
+                } else if (Date.now() - lastBearAttack > 1500) {
+                    // Bear Attacks Shinra (50-70 DMG)
+                    let dmg = Math.floor(Math.random() * 20) + 50;
+                    playerHP = Math.max(0, playerHP - dmg);
+                    document.getElementById('player-hp-num').innerText = playerHP;
+                    document.getElementById('player-hp-bar').style.width = (playerHP / 1500 * 100) + '%';
+                    lastBearAttack = Date.now();
 
-    st.markdown("""
-    <div class='story-box'>
-        <p><span class='dialogue-speaker'>Doctor Yuno:</span> <span class='dialogue-text'>"Hello, young merchant... My name is Dr. Yuno. I am deeply sorry to inform you... The tall boy, your brother Soho, and your sister Maki wearing the patch... have passed away."</span></p>
-        <p><span class='dialogue-speaker'>Doctor Yuno:</span> <span class='dialogue-text'>"Your old father is still alive, but he has fallen into a deep coma. He might awaken in 1 to 3 years..."</span></p>
-    </div>
-    """, unsafe_allow_html=True)
+                    if (playerHP <= 0) {
+                        alert("You were slain by the Bear! Restarting battle...");
+                        playerHP = 1500;
+                        bearHP = 500;
+                        document.getElementById('player-hp-bar').style.width = '100%';
+                        document.getElementById('boss-hp-bar').style.width = '100%';
+                        player.position.set(0,0,-40);
+                    }
+                }
+            }
+        }
 
-    st.markdown("""
-    <div class='story-box' style='border-color: #9333ea; background-color: #0d021a;'>
-        <p><span class='dialogue-speaker'>Shinra (In profound shock & despair):</span> <span class='dialogue-text'>"What...? Soho... Maki... are DEAD?!"</span></p>
-        <h2 style='color: #a855f7; text-align: center;'>HAAAAAAAAAAAAAAA...!!!!!!!</h2>
-        <p><i>A massive dark aura bursts forth from Shinra's body. Violent atmospheric tremors shake the hospital ground without causing structural damage—a terrifying pressure that frightens Doctor Yuno to his core!</i></p>
-    </div>
-    """, unsafe_allow_html=True)
+        function animate() {
+            requestAnimationFrame(animate);
+            updatePlayerMovement();
+            updateBearAI();
+            renderer.render(scene, camera);
+        }
 
-    if st.button("Conclusion"):
-        set_stage("FINAL_SCREEN")
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
 
-# ==========================================
-# STAGE 13: END SCREEN
-# ==========================================
-elif st.session_state.stage == "FINAL_SCREEN":
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    st.markdown("<h1 style='text-align: center; color: #dc2626; font-size: 70px;'>THE END</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #9ca3af;'>To Be Continued in Chapter 2...</p>", unsafe_allow_html=True)
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    
-    if st.button("Restart Chapter 1"):
-        st.session_state.clear()
-        st.rerun()
+        window.onload = init3D;
+    </script>
+</body>
+</html>
+"""
+
+components.html(html_code, height=800, scrolling=False)
