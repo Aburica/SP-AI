@@ -1,193 +1,221 @@
 import streamlit as st
 import time
 
-# إعدادات صفحة اللعبة
-st.set_page_config(
-    page_title="Shinra Adventures",
-    page_icon="⚔️",
-    layout="wide"
-)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shinra's Adventures - Chapter 1</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            width: 800px;
+            height: 500px;
+            background: #222;
+            border: 4px solid #444;
+            border-radius: 10px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        .screen {
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+        }
+        .active {
+            display: flex;
+        }
+        h1 { color: #f39c12; margin-bottom: 10px; }
+        p { font-size: 18px; line-height: 1.6; max-width: 700px; }
+        button {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #c0392b; }
+        .stats {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            font-size: 14px;
+            color: #f1c40f;
+        }
+        .hud {
+            position: absolute;
+            bottom: 10px;
+            left: 20px;
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+    </style>
+</head>
+<body>
 
-# تهيئة حالة اللعبة (Game State)
-if "scene" not in st.session_state:
-    st.session_state.scene = 1  # نبدأ بالمشهد الأول
-if "gold" not in st.session_state:
-    st.session_state.gold = 5000
-if "distance_to_village" not in st.session_state:
-    st.session_state.distance_to_village = 1200
-if "player_hp" not in st.session_state:
-    st.session_state.player_hp = 1500
-if "bear_hp" not in st.session_state:
-    st.session_state.bear_hp = 500
-if "quest_status" not in st.session_state:
-    st.session_state.quest_status = "Deliver goods to the village"
-if "inventory" not in st.session_state:
-    st.session_state.inventory = {"Cloth": 0, "Potatoes": 10, "Coal": 5, "Lotus Flowers": 5}
-if "carried_family" not in st.session_state:
-    st.session_state.carried_family = False
+<div id="game-container">
+    <!-- شاشة البداية / القصة التمهيدية -->
+    <div id="screen-intro" class="screen active">
+        <h1>Shinra's Adventures</h1>
+        <p>200 years ago, the Balance Crystal shattered. Hikari (Light) and Yami (Darkness) emerged... Now, a new tale begins in the isolated mountains.</p>
+        <button onclick="nextScreen('screen-story1')">Start Chapter 1</button>
+    </div>
 
-# تصميم واجهة اللعبة الجذابة (CSS)
-st.markdown("""
-<style>
-    .main { background-color: #0e1117; color: #ffffff; }
-    .stButton>button {
-        width: 100%;
-        background-color: #ff4b4b;
-        color: white;
-        font-weight: bold;
-        border-radius: 8px;
-        padding: 10px;
+    <!-- المشهد السينمائي الأول والثاني -->
+    <div id="screen-story1" class="screen">
+        <h3>Scene: The Mountain Home</h3>
+        <p>Yora (Father) is sick. Maki and Soho care for him. Shinra returns from selling lotus flowers and earns 30 gold pieces.</p>
+        <button onclick="startJourneyToVillage()">Go to Village with Cart (1200m)</button>
+    </div>
+
+    <!-- رحلة القرية والبيع -->
+    <div id="screen-village" class="screen">
+        <h3>The Village Market</h3>
+        <p id="village-text">Villagers want goods (Cloth, Potatoes, Coal, Lotus Flowers, Lettuce). You sell everything successfully!</p>
+        <button onclick="startReturnJourney()">Return to Mountain House</button>
+    </div>
+
+    <!-- طريق العودة ومواجهة الدب -->
+    <div id="screen-bear-encounter" class="screen">
+        <h3>Forest Path</h3>
+        <p>"Oh no! Bears are roaming our forest. I must fight it!"</p>
+        <button onclick="startCombat()">Fight the Bear!</button>
+    </div>
+
+    <!-- شاشة القتال (Turn-based Combat) -->
+    <div id="screen-combat" class="screen">
+        <div class="stats">Shinra HP: <span id="shinra-hp">1500</span> | Bear HP: <span id="bear-hp">500</span></div>
+        <h3>Combat vs Fierce Bear</h3>
+        <p id="combat-log">Choose your action wisely!</p>
+        <div>
+            <button onclick="combatAction('attack')">Normal Attack</button>
+            <button onclick="combatAction('dodge')">Dodge</button>
+            <button onclick="combatAction('dash')">Dash Strike</button>
+        </div>
+    </div>
+
+    <!-- نهاية القتال وما بعده -->
+    <div id="screen-after-combat" class="screen">
+        <h3>Aftermath</h3>
+        <p>Shinra defeats the bear with a slash, cooks the meat, and rushes back home...</p>
+        <button onclick="startTragedyScene()">Reach Home</button>
+    </div>
+
+    <!-- المشهد الأخير والمأساة -->
+    <div id="screen-tragedy" class="screen">
+        <h1>Tragedy at Home</h1>
+        <p>The house is destroyed. Father, Soho, and Maki are dead on the ground.<br>
+        Shinra loads them onto the cart and races to Dr. Yuno at the village (40 km/h).</p>
+        <button onclick="endChapter1()">Go to Hospital & Ending</button>
+    </div>
+
+    <!-- النهاية -->
+    <div id="screen-ending" class="screen">
+        <h1>End of Chapter 1</h1>
+        <p>Dr. Yuno: "Soho and Maki didn't survive, but your father is alive in a coma."<br>
+        Shinra lets out a powerful cry, releasing a dark, heavy aura that terrifies the doctor.<br><br><strong>To be continued...</strong></p>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+</div>
+
+<script>
+    function nextScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
     }
-    .stButton>button:hover { background-color: #ff2222; }
-    .game-box {
-        background-color: #1e2530;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #3a4454;
-        margin-bottom: 20px;
+
+    function startJourneyToVillage() {
+        // محاكاة مسافة 1200 متر والوصول للقرية
+        alert("Traveling 1200m down the mountain to the village...");
+        nextScreen('screen-village');
     }
-</style>
-""", unsafe_allow_html=True)
 
-# العنوان الرئيسي والشريط الجانبي (HUD)
-st.title("⚔️ Shinra Adventures (3D World Simulation)")
-st.sidebar.title("📊 Game Status (HUD)")
-st.sidebar.write(f"💰 Gold: **{st.session_state.gold}**")
-st.sidebar.write(f"❤️ Shinra HP: **{st.session_state.player_hp} / 1500**")
-st.sidebar.write(f"🎯 Current Quest: **{st.session_state.quest_status}**")
+    function startReturnJourney() {
+        alert("Goods sold out! Returning to the mountain house with 5000 gold in pocket...");
+        nextScreen('screen-bear-encounter');
+    }
 
-# ==================== المشهد الأول: السينمائي (الكريستالة) ====================
-if st.session_state.scene == 1:
-    st.markdown('<div class="game-box">', unsafe_allow_html=True)
-    st.subheader("Cinematic Scene 1: The Balance Crystal")
-    st.write("""
-    In a heavily isolated place within a series of towering mountains, stands the colossal Balance Crystal—white on the right side and black on the left.
-    200 years ago, the crystal exploded without warning. Two figures emerged: **Hikari** (white hair, white armor, representing Light) and **Yami** (black hair, black armor, representing Darkness). Both stand at 195 cm tall. 
-    Rule: Yami tries to destroy the world's balance, while Hikari tries to restore it indirectly without direct interference.
-    """)
-    if st.button("Next: 200 Years Later ⏩"):
-        st.session_state.scene = 2
-        st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    let shinraHP = 1500;
+    let bearHP = 500;
 
-# ==================== المشهد الثاني والثالث والرابع: البداية والتجارة ====================
-elif st.session_state.scene == 2:
-    st.markdown('<div class="game-box">', unsafe_allow_html=True)
-    st.subheader("Chapter 1: The Journey Begins")
-    st.write("""
-    **200 Years Later...**
-    A small rustic house in the mountains. Shinra lives with his sick father Yura, brother Soho, sister Maki, and the grave of his mother Korn.
-    Maki cares for Yura who fell ill. Soho and Shinra return from trading lotus flowers. Shinra manages to sell goods and learns business.
-    A week later, Soho is exhausted. Shinra takes the cart and the axe to go sell goods at the village.
-    """)
-    
-    st.markdown("---")
-    st.info("🎮 **Active Gameplay: Deliver Goods to the Village**")
-    st.write(f"Distance to Village: **{st.session_state.distance_to_village} meters**")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🚶‍♂️ Move Forward (Walk 400m)"):
-            if st.session_state.distance_to_village > 0:
-                st.session_state.distance_to_village -= 400
-                st.rerun()
-    with col2:
-        if st.button("🏃‍♂️ Dash to Village (Fast)"):
-            if st.session_state.distance_to_village > 0:
-                st.session_state.distance_to_village -= 1200
-                st.rerun()
-                
-    if st.session_state.distance_to_village <= 0:
-        st.success("You reached the village! Villagers buy all your goods. You earned 30 + more gold.")
-        st.session_state.gold += 200
-        st.session_state.quest_status = "Return to Home"
-        if st.button("Proceed to Return Journey 🌲"):
-            st.session_state.scene = 3
-            st.rerun()
-    st.markdown('</div>', unsafe_allow_html=True)
+    function startCombat() {
+        nextScreen('screen-combat');
+        updateHPCard();
+    }
 
-# ==================== المشهد الخامس: مواجهة الدب (القتال) ====================
-elif st.session_state.scene == 3:
-    st.markdown('<div class="game-box">', unsafe_allow_html=True)
-    st.subheader("Chapter 1: Encounter in the Forest - Boss Battle (Bear)")
-    st.write("""
-    On his way back at night, Shinra encounters a fierce bear roaming the forest near their home!
-    * **Shinra HP:** 1500 | **Bear HP:** 500
-    * **Shinra Skills:** Normal Attack (25-40 dmg), Dodge, Dash.
-    * **Bear Skills:** Normal Attack (30-50 dmg), Fast Attack (50-90 dmg).
-    """)
-    
-    st.metric("🐻 Bear HP", st.session_state.bear_hp)
-    st.metric("🧑 Shinra HP", st.session_state.player_hp)
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        if st.button("⚔️ Normal Attack"):
-            import random
-            s_dmg = random.randint(25, 40)
-            b_dmg = random.randint(30, 50)
-            st.session_state.bear_hp -= s_dmg
-            st.session_state.player_hp -= b_dmg
-            st.rerun()
-    with col2:
-        if st.button("🛡️ Dodge / Dash"):
-            import random
-            b_dmg = random.randint(10, 20)  # Reduced damage on dodge
-            st.session_state.player_hp -= b_dmg
-            st.success("Successfully dodged part of the attack!")
-            st.rerun()
-    with col3:
-        if st.button("⚡ Fast Slash"):
-            import random
-            s_dmg = random.randint(50, 70)
-            b_dmg = random.randint(40, 80)
-            st.session_state.bear_hp -= s_dmg
-            st.session_state.player_hp -= b_dmg
-            st.rerun()
-            
-    if st.session_state.bear_hp <= 0:
-        st.success("Shinra defeated the bear with difficulty, cut its head off, roasted the meat, and ate it deliciously! He hurried back home.")
-        if st.button("Continue to Home 🏚️"):
-            st.session_state.scene = 4
-            st.rerun()
-    elif st.session_state.player_hp <= 0:
-        st.error("You were defeated by the bear! Game Over.")
-        if st.button("🔄 Restart Battle"):
-            st.session_state.player_hp = 1500
-            st.session_state.bear_hp = 500
-            st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True)
+    function updateHPCard() {
+        document.getElementById('shinra-hp').innerText = shinraHP;
+        document.getElementById('bear-hp').innerText = bearHP;
+    }
 
-# ==================== المشهد السادس: المأساة والعودة للمستشفى ====================
-elif st.session_state.scene == 4:
-    st.markdown('<div class="game-box">', unsafe_allow_html=True)
-    st.subheader("Chapter 1: The Tragedy")
-    st.write("""
-    **Narrator:** And here the tragedy begins for Shinra...
-    He arrives home to find the house destroyed, father Yura unconscious, and Soho and Maki dead.
-    Shinra cries in shock: *'Aaah! Soho! Maki! Dad! Anyone alive?! I must take them to the hospital!'*
-    """)
-    
-    if not st.session_state.carried_family:
-        if st.button("Press [E] to lift Maki, Soho, and Yura into the cart"):
-            st.session_state.carried_family = True
-            st.rerun()
-    else:
-        st.success("Family loaded into the cart! Shinra runs at 40 km/h back to the village hospital.")
-        st.write("""
-        **At the Hospital:**
-        Doctor Yuno: *"I am sorry, young merchant. Your brother and sister are dead, but your old father is alive though in a coma that could last 1 to 3 years."*
-        
-        Shinra experiences extreme shock, crying and screaming. A powerful, non-destructive black aura surrounds him, terrifying Doctor Yuno!
-        """)
-        st.markdown("### 🎬 **THE END OF CHAPTER 1**")
-        if st.button("🔄 Play Again / Restart Chapter"):
-            st.session_state.scene = 1
-            st.session_state.player_hp = 1500
-            st.session_state.bear_hp = 500
-            st.session_state.distance_to_village = 1200
-            st.session_state.carried_family = False
-            st.rerun()
-            
-    st.markdown('</div>', unsafe_allow_html=True)
+    function combatAction(action) {
+        let log = document.getElementById('combat-log');
+        let bearDamage = 0;
+        let shinraDamage = 0;
+
+        if (action === 'attack') {
+            shinraDamage = Math.floor(Math.random() * 16) + 25; // 25-40
+            bearDamage = Math.floor(Math.random() * 21) + 30;  // 30-50
+            bearHP -= shinraDamage;
+            shinraHP -= bearDamage;
+            log.innerText = `You attacked for ${shinraDamage}. Bear hit you for ${bearDamage}.`;
+        } else if (action === 'dodge') {
+            bearDamage = 0; // تفادي كامل
+            log.innerText = `You successfully dodged the bear's attack!`;
+        } else if (action === 'dash') {
+            shinraDamage = Math.floor(Math.random() * 20) + 40;
+            bearDamage = Math.floor(Math.random() * 41) + 50; // هجمة سريعة قوية للطرفين
+            bearHP -= shinraDamage;
+            shinraHP -= bearDamage;
+            log.innerText = `Dash attack! You dealt ${shinraDamage}, but took ${bearDamage} damage!`;
+        }
+
+        if (bearHP <= 0) {
+            updateHPCard();
+            alert("You defeated the bear!");
+            nextScreen('screen-after-combat');
+            return;
+        }
+
+        if (shinraHP <= 0) {
+            alert("You were defeated by the bear! Try again.");
+            shinraHP = 1500;
+            bearHP = 500;
+        }
+        updateHPCard();
+    }
+
+    function startTragedyScene() {
+        nextScreen('screen-tragedy');
+    }
+
+    function endChapter1() {
+        nextScreen('screen-ending');
+    }
+</script>
+
+</body>
+</html>
